@@ -1,0 +1,24 @@
+{
+  "us-central": {
+    "name": "Central US",
+    "continentM49": 19,
+    "regionM49": 21,
+    "countryA2": "US",
+    "countryM49": 840,
+    "placement": "central",
+    "subRegion": "Iowa",
+    "latitude": 41.5908,
+    "longitude": -93.6208
+  },
+  "us-east": {
+    "name": "East US",
+    "continentM49": 19,
+    "regionM49": 21,
+    "countryM49": 840,
+    "countryA2": "US",
+    "placement": "east",
+    "subRegion": "Virginia",
+    "latitude": 37.3719,
+    "longitude": -79.8164
+  }
+}

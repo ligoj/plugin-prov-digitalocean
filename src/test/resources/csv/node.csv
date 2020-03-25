@@ -1,0 +1,4 @@
+id;name;refined.id;mode;uiClasses;tag;tagUiClasses
+service:prov;Provisioning;;LINK;fas fa-server;technical;fa fa-industry
+service:prov:digitalocean;Provisioning Digital Ocean;service:prov;LINK;;;
+service:prov:digitalocean:test;Provisioning Digital Ocean AccountA;service:prov:digitalocean;LINK;;;

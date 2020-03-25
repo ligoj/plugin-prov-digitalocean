@@ -1,0 +1,2 @@
+id;owner.id;data;mandatory;type;mode;secured
+service:prov:digitalocean:access-token;service:prov:digitalocean;{"pattern":"[0-9a-z]{64}"};true;TEXT;;

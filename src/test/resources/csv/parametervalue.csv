@@ -1,0 +1,2 @@
+parameter.id;data;node.id;subscription.id!
+service:prov:digitalocean:access-token;secret;service:prov:digitalocean:test;
