@@ -200,7 +200,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			type.setLatency(Rate.MEDIUM);
 			type.setAvailability(99d);
 			type.setMinimal(1);
-			type.setMaximal(1024);
+			type.setIncrement(null);
+			type.setMaximal(1024d);
 			type.setOptimized(ProvStorageOptimized.IOPS);
 			type.setIops(10);
 			type.setThroughput(20);
