@@ -24,6 +24,7 @@ import org.ligoj.app.plugin.prov.model.ProvSupportType;
 import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.springframework.stereotype.Component;
 
@@ -54,7 +55,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Name space for local configuration files
 	 */
-	protected static final String PREFIX = "doc";
+	protected static final String PREFIX = "digitalocean";
 
 	/**
 	 * Configuration key used for enabled instance type pattern names. When value is <code>null</code>, no restriction.
@@ -69,7 +70,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
 	 * restriction.
 	 */
-	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
+	public static final String CONF_ENGINE = ProvDocPluginResource.KEY + ":database-engine";
 
 	/**
 	 * Configuration key used for enabled OS pattern names. When value is <code>null</code>, no restriction.
@@ -93,7 +94,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Get previous data
 		nextStep(node, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ENGINE, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidDatabaseType(Pattern.compile(configuration.get(CONF_DTYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
@@ -108,6 +112,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				.collect(Collectors.toMap(ProvSupportType::getName, Function.identity())));
 		context.setPreviousSupport(sp2Repository.findAllBy("type.node", node).stream()
 				.collect(Collectors.toMap(ProvSupportPrice::getCode, Function.identity())));
+		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream()
+				.filter(r -> isEnabledRegion(context, r))
+				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
+		context.getMapRegionToName().putAll(toMap(PREFIX + "/regions.json", MAP_LOCATION));
 
 		// Fetch the remote prices stream and build the prices object
 		nextStep(node, "retrieve-catalog");
@@ -116,6 +124,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		nextStep(node, "install-vm");
 		try (var curl = new CurlProcessor()) {
 			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
+			final var prices = objectMapper.readValue(rawJson, ComputePrices.class);
 
 			// For each price/region/OS/software
 			// Install term, type and price
@@ -173,10 +182,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Install type and price
 		nextStep(node, "install-support");
 		var priceCode = "-price-code-";
-		csvForBean.toBean(ProvSupportType.class, "csv/" + PREFIX + "-prov-support-type.csv").forEach(t -> {
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
 			installSupportType(context, t.getName(), t);
 		});
-		csvForBean.toBean(ProvSupportPrice.class, "csv/" + PREFIX + "-prov-support-price.csv").forEach(t -> {
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
 			installSupportPrice(context, priceCode, t);
 		});
 
@@ -405,6 +414,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();
 			newType.setName(c);
+			newType.setNode(context.getNode());
 			return newType;
 		});
 

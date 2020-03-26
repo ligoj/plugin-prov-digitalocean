@@ -357,7 +357,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	private void mockServer() throws IOException {
 		configuration.put(DocPriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
 		httpServer.stubFor(get(urlEqualTo("/")).willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils
-				.toString(new ClassPathResource("mock-server/digitalocean/pricing.html").getInputStream(), "UTF-8"))));
+				.toString(new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(), "UTF-8"))));
 		httpServer.start();
 	}
 
@@ -440,7 +440,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		configuration.put(DocPriceImport.CONF_REGIONS, "europe-north");
 		configuration.put(DocPriceImport.CONF_ITYPE, "(ds4|a4).*");
 		configuration.put(DocPriceImport.CONF_DTYPE, "(sql-bc-gen5-16|gp-gen5-.*)");
-		configuration.put(DocPriceImport.CONF_ETYPE, "(MYSQL|POSTGRESQL|SQL SERVER)");
+		configuration.put(DocPriceImport.CONF_ENGINE, "(MYSQL|POSTGRESQL|SQL SERVER)");
 		configuration.put(DocPriceImport.CONF_OS, "(WINDOWS|LINUX)");
 
 		// Check the reserved
