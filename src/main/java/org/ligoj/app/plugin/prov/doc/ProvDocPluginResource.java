@@ -115,7 +115,7 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 	}
 
 	/**
-	 * Fetch the prices from the Azure server. Install or update the prices
+	 * Fetch the prices from the DigitalOcean server. Install or update the prices
 	 */
 	@Override
 	public void install() throws IOException {

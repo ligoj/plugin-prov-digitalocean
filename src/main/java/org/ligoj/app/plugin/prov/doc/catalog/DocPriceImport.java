@@ -4,6 +4,8 @@
 package org.ligoj.app.plugin.prov.doc.catalog;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -11,6 +13,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
+import org.ligoj.app.plugin.prov.doc.model.Image;
+import org.ligoj.app.plugin.prov.doc.model.Options;
+import org.ligoj.app.plugin.prov.doc.model.Region;
 import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
 import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
@@ -24,13 +29,15 @@ import org.ligoj.app.plugin.prov.model.ProvSupportType;
 import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.springframework.stereotype.Component;
 
 import lombok.Setter;
 
 /**
- * The provisioning price service for Azure. Manage install or update of prices.<br>
+ * The provisioning price service for Digital Ocean. Manage install or update of
+ * prices.<br>
  */
 @Component
 @Setter
@@ -42,7 +49,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	protected static final String CONF_API_PRICES = ProvDocPluginResource.KEY + ":prices-url";
 
 	/**
-	 * Configuration key used for enabled regions pattern names. When value is <code>null</code>, no restriction.
+	 * Configuration key used for enabled regions pattern names. When value is
+	 * <code>null</code>, no restriction.
 	 */
 	protected static final String CONF_REGIONS = ProvDocPluginResource.KEY + ":regions";
 
@@ -57,22 +65,25 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	protected static final String PREFIX = "doc";
 
 	/**
-	 * Configuration key used for enabled instance type pattern names. When value is <code>null</code>, no restriction.
+	 * Configuration key used for enabled instance type pattern names. When value is
+	 * <code>null</code>, no restriction.
 	 */
 	public static final String CONF_ITYPE = ProvDocPluginResource.KEY + ":instance-type";
 
 	/**
-	 * Configuration key used for enabled database type pattern names. When value is <code>null</code>, no restriction.
+	 * Configuration key used for enabled database type pattern names. When value is
+	 * <code>null</code>, no restriction.
 	 */
 	public static final String CONF_DTYPE = ProvDocPluginResource.KEY + ":database-type";
 	/**
-	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
-	 * restriction.
+	 * Configuration key used for enabled database engine pattern names. When value
+	 * is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
 
 	/**
-	 * Configuration key used for enabled OS pattern names. When value is <code>null</code>, no restriction.
+	 * Configuration key used for enabled OS pattern names. When value is
+	 * <code>null</code>, no restriction.
 	 */
 	public static final String CONF_OS = ProvDocPluginResource.KEY + ":os";
 
@@ -93,7 +104,11 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Get previous data
 		nextStep(node, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidDatabaseType(Pattern.compile(configuration.get(CONF_DTYPE, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ETYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
+		context.getMapRegionToName().putAll(toMap("digitalocean-regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
@@ -108,21 +123,43 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				.collect(Collectors.toMap(ProvSupportType::getName, Function.identity())));
 		context.setPreviousSupport(sp2Repository.findAllBy("type.node", node).stream()
 				.collect(Collectors.toMap(ProvSupportPrice::getCode, Function.identity())));
+		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream()
+				.filter(r -> isEnabledRegion(context, r))
+				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
 
 		// Fetch the remote prices stream and build the prices object
 		nextStep(node, "retrieve-catalog");
 
 		// Instance(VM)
 		nextStep(node, "install-vm");
+
+		var monthlyTerm = installPriceTerm(context, "monthly", 1);
+		var hourlyTerm = installPriceTerm(context, "hourly", 0);
+
 		try (var curl = new CurlProcessor()) {
 			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
+			final var options = objectMapper.readValue(rawJson, Options.class);
 
 			// For each price/region/OS/software
 			// Install term, type and price
+			var regionsById = options.getRegions().stream().filter(r -> isEnabledRegion(context, r))
+					.collect(Collectors.toMap(Region::getId, Function.identity()));
+			options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
+					.forEach(s -> s.setType(installInstanceType(context, s.getCpu(),
+							Math.ceil(s.getMemoryInBytes() / 1024 / 1024 / 1024))));
+
+			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName())))
+					.map(d -> getRegionsUnion(d.getImages())).forEach(r -> options.getSizes().forEach(s -> {
+						installInstancePrice(context, monthlyTerm, getOs(d.getName()), localCode, s.getType(),
+								s.getPricePerMonth(), software, null, r);
+						installInstancePrice(context, hourlyTerm, getOs(d.getName()), localCode, s.getType(),
+								s.getPricePerHour() * context.getHoursMonth(), software, null, r);
+					}));
+
 			var os = VmOs.LINUX;
 			var codeType = "-type-";
 			var region = "-france-";
-			var termCode = "-term-";
+			var termCode = "on-demand";
 			var priceCode = "-price-code-";
 			var software = "-software-";
 			var byol = false;
@@ -130,7 +167,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				// Ignored type
 				var type = installInstanceType(context, codeType, new Object());
 				var term = installPriceTerm(context, termCode, new Object());
-				installInstancePrice(context, term, os, priceCode, type, 123d, software, byol, region);
 
 				// Storage
 				// Install type and price
@@ -182,6 +218,15 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// TODO
 
+	}
+
+	private VmOs getOs(String name) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private List<Integer> getRegionsUnion(List<Image> images) {
+		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).distinct().collect(Collectors.toList());
 	}
 
 	/**
@@ -295,8 +340,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new price term as needed and complete the specifications.
 	 */
-	protected ProvInstancePriceTerm installPriceTerm(final UpdateContext context, final String code,
-			final Object aTerm) {
+	protected ProvInstancePriceTerm installPriceTerm(final UpdateContext context, final String code, final int period) {
 		final var term = context.getPriceTerms().computeIfAbsent(code, t -> {
 			final var newTerm = new ProvInstancePriceTerm();
 			newTerm.setNode(context.getNode());
@@ -307,7 +351,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Complete the specifications
 		if (context.getPriceTermsMerged().add(term.getCode())) {
 			term.setName(code /* human readable name */);
-			term.setPeriod(0);
+			term.setPeriod(period);
 			term.setReservation(false);
 			term.setConvertibleFamily(false);
 			term.setConvertibleType(false);

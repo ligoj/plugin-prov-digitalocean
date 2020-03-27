@@ -1,1 +1,25 @@
-{"projects":[{"id":"PID","owner_uuid":"UUID","owner_id":ID,"name":"ligoj-test","description":"","purpose":"Just trying out DigitalOcean","environment":"","is_default":true,"created_at":"2020-03-23T23:17:38Z","updated_at":"2020-03-23T23:17:38Z"}],"links":{"pages":{"first":"https://api.digitalocean.com/v2/projects?page=1","last":"https://api.digitalocean.com/v2/projects?page=1"}},"meta":{"total":1}}
+{
+	"projects": [
+		{
+			"id": "PID",
+			"owner_uuid": "UUID",
+			"owner_id":"ID",
+			"name": "ligoj-test",
+			"description": "",
+			"purpose": "Just trying out DigitalOcean",
+			"environment": "",
+			"is_default": true,
+			"created_at": "2020-03-23T23:17:38Z",
+			"updated_at": "2020-03-23T23:17:38Z"
+		}
+	],
+	"links": {
+		"pages": {
+			"first": "https://api.digitalocean.com/v2/projects?page=1",
+			"last": "https://api.digitalocean.com/v2/projects?page=1"
+		}
+	},
+	"meta": {
+		"total": 1
+	}
+}

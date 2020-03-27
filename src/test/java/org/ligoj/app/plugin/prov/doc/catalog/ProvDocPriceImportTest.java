@@ -8,8 +8,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.ligoj.app.plugin.prov.quote.instance.QuoteInstanceQuery.builder;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 
 import javax.annotation.PostConstruct;
@@ -66,6 +68,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ligoj.app.plugin.prov.doc.model.Options;;
+
 
 /**
  * Test class of {@link DocPriceImport}
@@ -357,7 +363,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	private void mockServer() throws IOException {
 		configuration.put(DocPriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
 		httpServer.stubFor(get(urlEqualTo("/")).willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils
-				.toString(new ClassPathResource("mock-server/digitalocean/pricing.html").getInputStream(), "UTF-8"))));
+				.toString(new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(), "UTF-8"))));
 		httpServer.start();
 	}
 
@@ -586,5 +592,16 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	 */
 	private int getSubscription(final String project) {
 		return getSubscription(project, ProvDocPluginResource.KEY);
+	}
+	
+	private Options buildOptions() {
+		final String filePath = "/mock-server/digitalocean/options_for_create.json";
+		try {
+			return new ObjectMapper().readValue(new File(getClass().getResource(filePath).toURI()), Options.class);
+		} catch(IOException | URISyntaxException ex) {
+			ex.printStackTrace();
+			return null;
+		}
+		
 	}
 }
