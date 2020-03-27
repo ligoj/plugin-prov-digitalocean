@@ -4,22 +4,26 @@
 package org.ligoj.app.plugin.prov.doc.catalog;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
 import org.ligoj.app.plugin.prov.doc.model.Image;
 import org.ligoj.app.plugin.prov.doc.model.Options;
-import org.ligoj.app.plugin.prov.doc.model.Region;
+import org.ligoj.app.plugin.prov.doc.model.Size;
 import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
 import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
 import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
+import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvStorageOptimized;
 import org.ligoj.app.plugin.prov.model.ProvStoragePrice;
 import org.ligoj.app.plugin.prov.model.ProvStorageType;
@@ -35,8 +39,7 @@ import org.springframework.stereotype.Component;
 import lombok.Setter;
 
 /**
- * The provisioning price service for Digital Ocean. Manage install or update of
- * prices.<br>
+ * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
  */
 @Component
 @Setter
@@ -48,8 +51,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	protected static final String CONF_API_PRICES = ProvDocPluginResource.KEY + ":prices-url";
 
 	/**
-	 * Configuration key used for enabled regions pattern names. When value is
-	 * <code>null</code>, no restriction.
+	 * Configuration key used for enabled regions pattern names. When value is <code>null</code>, no restriction.
 	 */
 	protected static final String CONF_REGIONS = ProvDocPluginResource.KEY + ":regions";
 
@@ -64,33 +66,31 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	protected static final String PREFIX = "digitalocean";
 
 	/**
-	 * Configuration key used for enabled instance type pattern names. When value is
-	 * <code>null</code>, no restriction.
+	 * Configuration key used for enabled instance type pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_ITYPE = ProvDocPluginResource.KEY + ":instance-type";
 
 	/**
-	 * Configuration key used for enabled database type pattern names. When value is
-	 * <code>null</code>, no restriction.
+	 * Configuration key used for enabled database type pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_DTYPE = ProvDocPluginResource.KEY + ":database-type";
 	/**
-	 * Configuration key used for enabled database engine pattern names. When value
-	 * is <code>null</code>, no restriction.
+	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
+	 * restriction.
 	 */
 	public static final String CONF_ENGINE = ProvDocPluginResource.KEY + ":database-engine";
 
 	/**
-	 * Configuration key used for enabled OS pattern names. When value is
-	 * <code>null</code>, no restriction.
+	 * Configuration key used for enabled OS pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_OS = ProvDocPluginResource.KEY + ":os";
-	
+
 	/**
 	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
 	 * restriction.
 	 */
 	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
+
 	private String getPricesApi() {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
 	}
@@ -112,7 +112,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ETYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
-		context.getMapRegionToName().putAll(toMap("digitalocean-regions.json", MAP_LOCATION));
+		context.getMapRegionToName().putAll(toMap("regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
@@ -135,7 +135,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		nextStep(node, "retrieve-catalog");
 
 		// Instance(VM)
-		nextStep(node, "install-vm");
 
 		var monthlyTerm = installPriceTerm(context, "monthly", 1);
 		var hourlyTerm = installPriceTerm(context, "hourly", 0);
@@ -143,41 +142,32 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		try (var curl = new CurlProcessor()) {
 			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
 			final var options = objectMapper.readValue(rawJson, Options.class);
+			final var regionIds = new HashMap<Integer, ProvLocation>();
 
 			// For each price/region/OS/software
 			// Install term, type and price
-			var regionsById = options.getRegions().stream().filter(r -> isEnabledRegion(context, r))
-					.collect(Collectors.toMap(Region::getId, Function.identity()));
+			nextStep(node, "install-vm");
+			options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
+					.forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
 			options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
-					.forEach(s -> s.setType(installInstanceType(context, s.getCpu(),
-							Math.ceil(s.getMemoryInBytes() / 1024 / 1024 / 1024))));
+					.forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
 
-			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName())))
-					.map(d -> getRegionsUnion(d.getImages())).forEach(r -> options.getSizes().forEach(s -> {
-						installInstancePrice(context, monthlyTerm, getOs(d.getName()), localCode, s.getType(),
-								s.getPricePerMonth(), software, null, r);
-						installInstancePrice(context, hourlyTerm, getOs(d.getName()), localCode, s.getType(),
-								s.getPricePerHour() * context.getHoursMonth(), software, null, r);
-					}));
+			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName()))).forEach(d -> {
+				final var os = getOs(d.getName());
+				getRegionsUnion(d.getImages()).stream().map(regionIds::get)
+						.forEach(r -> options.getSizes().forEach(s -> {
+							installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
+							installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(),
+									s.getPricePerHour() * context.getHoursMonth(), r);
+						}));
+			});
 
-			var os = VmOs.LINUX;
+			nextStep(node, "install-vm-storage");
 			var codeType = "-type-";
-			var region = "-france-";
-			var termCode = "on-demand";
-			var priceCode = "-price-code-";
-			var software = "-software-";
-			var byol = false;
-			if (isEnabledOs(context, os) || !isEnabledType(context, codeType)) {
-				// Ignored type
-				var type = installInstanceType(context, codeType, new Object());
-				var term = installPriceTerm(context, termCode, new Object());
-
-				// Storage
-				// Install type and price
-				nextStep(node, "install-vm-storage");
-				var sType = installStorageType(context, codeType, new Object());
-				installStoragePrice(context, priceCode, sType, 123d, region);
-			}
+			var priceCode = "-priceCode-";
+			var region = new ProvLocation();
+			var sType = installStorageType(context, codeType, new Object());
+			// installStoragePrice(context, priceCode, sType, 123d, region);
 		}
 
 		// Database
@@ -197,7 +187,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			if (!isEnabledEngine(context, engine) || !isEnabledType(context, codeType)) {
 				// Ignored type
 				var type = installDatabaseType(context, codeType, new Object());
-				var term = installPriceTerm(context, termCode, new Object());
+				var term = context.getPriceTerms().get(hourlyTerm.getCode());
 				installDatabasePrice(context, term, priceCode, type, 123d, engine, edition, storageEngine, byol,
 						region);
 			}
@@ -224,13 +214,12 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 	}
 
-	private VmOs getOs(String name) {
-		// TODO Auto-generated method stub
-		return null;
+	private VmOs getOs(final String osName) {
+		return EnumUtils.getEnum(VmOs.class, osName.replace("redhat", "RHEL").replace("sles", "SUSE").toUpperCase());
 	}
 
-	private List<Integer> getRegionsUnion(List<Image> images) {
-		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).distinct().collect(Collectors.toList());
+	private Set<Integer> getRegionsUnion(final List<Image> images) {
+		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).collect(Collectors.toSet());
 	}
 
 	/**
@@ -244,21 +233,19 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			return newType;
 		});
 
-		return context.getStorageTypesMerged().computeIfAbsent(code, c -> {
-			type.setName(code /* human readable name */);
-			type.setLatency(Rate.MEDIUM);
-			type.setAvailability(99d);
-			type.setMinimal(1);
-			type.setIncrement(null);
-			type.setMaximal(1024d);
-			type.setOptimized(ProvStorageOptimized.IOPS);
-			type.setIops(10);
-			type.setThroughput(20);
-			type.setInstanceType("%");
-			type.setDatabaseType("%");
-			// Save the changes
-			return stRepository.save(type);
-		});
+		return copyAsNeeded(context, type, t -> {
+			t.setName(code /* human readable name */);
+			t.setLatency(Rate.MEDIUM);
+			t.setAvailability(99d);
+			t.setMinimal(1);
+			t.setIncrement(null);
+			t.setMaximal(1024d);
+			t.setOptimized(ProvStorageOptimized.IOPS);
+			t.setIops(10);
+			t.setThroughput(20);
+			t.setInstanceType("%");
+			t.setDatabaseType("%");
+		}, stRepository);
 	}
 
 	/**
@@ -286,19 +273,17 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Install a new instance price as needed.
 	 */
 	private void installInstancePrice(final UpdateContext context, final ProvInstancePriceTerm term, final VmOs os,
-			final String localCode, final ProvInstanceType type, final double monthlyCost, final String software,
-			final boolean byol, final String region) {
-		final var price = context.getPrevious().computeIfAbsent(region + "/" + localCode, code -> {
-			// New instance price (not update mode)
-			final var newPrice = new ProvInstancePrice();
-			newPrice.setCode(code);
-			return newPrice;
-		});
+			final ProvInstanceType type, final double monthlyCost, final ProvLocation region) {
+		final var price = context.getPrevious().computeIfAbsent(
+				region.getName() + "/" + term.getCode() + "/" + type.getCode() + "/" + os.name(), code -> {
+					// New instance price (not update mode)
+					final var newPrice = new ProvInstancePrice();
+					newPrice.setCode(code);
+					return newPrice;
+				});
 		copyAsNeeded(context, price, p -> {
-			p.setLocation(installRegion(context, region));
+			p.setLocation(region);
 			p.setOs(os);
-			p.setSoftware(software);
-			p.setLicense(null /* ProvInstancePrice.LICENSE_BYOL */);
 			p.setTerm(term);
 			p.setTenancy(ProvTenancy.SHARED);
 			p.setType(type);
@@ -312,7 +297,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new instance type as needed.
 	 */
-	private ProvInstanceType installInstanceType(final UpdateContext context, final String code, final Object aType) {
+	private ProvInstanceType installInstanceType(final UpdateContext context, final String code, final Size aType) {
 		final var type = context.getInstanceTypes().computeIfAbsent(code, c -> {
 			// New instance type (not update mode)
 			final var newType = new ProvInstanceType();
@@ -322,23 +307,20 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Merge as needed
-		if (context.getInstanceTypesMerged().add(type.getCode())) {
-			type.setName(code /* human readable name */);
-			type.setCpu(2d);
-			type.setRam((int) 2 * 1024);
-			type.setDescription("-description'");
-			type.setConstant(true);
-			type.setAutoScale(false);
+		return copyAsNeeded(context, type, t -> {
+			t.setName(code);
+			t.setCpu(aType.getCpu());
+			t.setRam((int) Math.ceil(aType.getMemoryInBytes() / 1024 / 1024 / 1024));
+			t.setDescription("{Disk: " + aType.getDisk() + ", Category: " + aType.getCategorie().getName() + "}");
+			t.setConstant(true);
+			t.setAutoScale(false);
 
 			// Rating
-			type.setCpuRate(Rate.MEDIUM);
-			type.setRamRate(Rate.MEDIUM);
-			type.setNetworkRate(Rate.MEDIUM);
-			type.setStorageRate(Rate.MEDIUM);
-			itRepository.save(type);
-		}
-
-		return type;
+			t.setCpuRate(Rate.MEDIUM);
+			t.setRamRate(Rate.MEDIUM);
+			t.setNetworkRate(Rate.MEDIUM);
+			t.setStorageRate(Rate.MEDIUM);
+		}, itRepository);
 	}
 
 	/**
@@ -353,18 +335,16 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Complete the specifications
-		if (context.getPriceTermsMerged().add(term.getCode())) {
-			term.setName(code /* human readable name */);
-			term.setPeriod(period);
-			term.setReservation(false);
-			term.setConvertibleFamily(false);
-			term.setConvertibleType(false);
-			term.setConvertibleLocation(false);
-			term.setConvertibleOs(false);
-			term.setEphemeral(false);
-			iptRepository.save(term);
-		}
-		return term;
+		return copyAsNeeded(context, term, t -> {
+			t.setName(code /* human readable name */);
+			t.setPeriod(period);
+			t.setReservation(false);
+			t.setConvertibleFamily(false);
+			t.setConvertibleType(false);
+			t.setConvertibleLocation(false);
+			t.setConvertibleOs(false);
+			t.setEphemeral(false);
+		}, iptRepository);
 	}
 
 	/**
@@ -379,24 +359,20 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Merge as needed
-		if (context.getInstanceTypesMerged().add(type.getCode())) {
-			type.setName(code /* human readable name */);
-			type.setCpu(2d);
-			type.setRam((int) 2 * 1024);
-			type.setDescription("-description'");
-			type.setConstant(true);
-			type.setAutoScale(false);
+		return copyAsNeeded(context, type, t -> {
+			t.setName(code /* human readable name */);
+			t.setCpu(2d);
+			t.setRam((int) 2 * 1024);
+			t.setDescription("-description'");
+			t.setConstant(true);
+			t.setAutoScale(false);
 
 			// Rating
-			type.setCpuRate(Rate.MEDIUM);
-			type.setRamRate(Rate.MEDIUM);
-			type.setNetworkRate(Rate.MEDIUM);
-			type.setStorageRate(Rate.MEDIUM);
-
-			dtRepository.saveAndFlush(type);
-		}
-
-		return type;
+			t.setCpuRate(Rate.MEDIUM);
+			t.setRamRate(Rate.MEDIUM);
+			t.setNetworkRate(Rate.MEDIUM);
+			t.setStorageRate(Rate.MEDIUM);
+		}, dtRepository);
 	}
 
 	/**
@@ -479,5 +455,36 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		type.setLevel(aType.getLevel());
 		st2Repository.save(type);
 		return type;
+	}
+
+	/**
+	 * Install a new region as needed.<br>
+	 *
+	 * @param context The current import context.
+	 * @param region  The region code to install as needed.
+	 * @param name    The region human name.
+	 * @return The previous or the new installed region.
+	 */
+	private ProvLocation installRegion(final UpdateContext context, final String region, final String name) {
+		final ProvLocation entity = context.getRegions().computeIfAbsent(region, r -> {
+			final ProvLocation newRegion = new ProvLocation();
+			newRegion.setNode(context.getNode());
+			newRegion.setName(region);
+			return newRegion;
+		});
+
+		// Update the location details as needed
+		return copyAsNeeded(context, entity, r -> {
+			final ProvLocation regionStats = context.getMapRegionToName().getOrDefault(r, new ProvLocation());
+			r.setContinentM49(regionStats.getContinentM49());
+			r.setCountryM49(regionStats.getCountryM49());
+			r.setCountryA2(regionStats.getCountryA2());
+			r.setPlacement(regionStats.getPlacement());
+			r.setRegionM49(regionStats.getRegionM49());
+			r.setSubRegion(regionStats.getSubRegion());
+			r.setLatitude(regionStats.getLatitude());
+			r.setLongitude(regionStats.getLongitude());
+			r.setDescription(name);
+		}, locationRepository);
 	}
 }
