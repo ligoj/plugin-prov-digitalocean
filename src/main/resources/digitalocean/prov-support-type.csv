@@ -1,0 +1,4 @@
+node.id;name;slaStartTime;slaEndTime;slaWeekEnd;commitment;accessApi;accessEmail;accessChat;accessPhone;seats;slaGeneralGuidance;slaSystemImpaired;slaProductionSystemImpaired;slaProductionSystemDown;slaBusinessCriticalSystemDown;level;description
+service:prov:digitalocean;Developer;0;86400000;TRUE;1;;ALL;;;;;;;;;LOW;https://www.digitalocean.com/support/#DeveloperSupport
+service:prov:digitalocean;Business;0;86400000;TRUE;1;;ALL;;;;;;;;;MEDIUM;https://www.digitalocean.com/support/#BusinessSupport
+service:prov:digitalocean;Premier;0;86400000;TRUE;1;;ALL;ALL;ALL;;180000;180000;180000;180000;180000;BEST;https://www.digitalocean.com/support/#PremierSupport

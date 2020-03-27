@@ -4,7 +4,6 @@
 package org.ligoj.app.plugin.prov.doc.catalog;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -62,7 +61,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Name space for local configuration files
 	 */
-	protected static final String PREFIX = "doc";
+	protected static final String PREFIX = "digitalocean";
 
 	/**
 	 * Configuration key used for enabled instance type pattern names. When value is
@@ -79,14 +78,19 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Configuration key used for enabled database engine pattern names. When value
 	 * is <code>null</code>, no restriction.
 	 */
-	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
+	public static final String CONF_ENGINE = ProvDocPluginResource.KEY + ":database-engine";
 
 	/**
 	 * Configuration key used for enabled OS pattern names. When value is
 	 * <code>null</code>, no restriction.
 	 */
 	public static final String CONF_OS = ProvDocPluginResource.KEY + ":os";
-
+	
+	/**
+	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
+	 * restriction.
+	 */
+	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
 	private String getPricesApi() {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
 	}
@@ -209,10 +213,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Install type and price
 		nextStep(node, "install-support");
 		var priceCode = "-price-code-";
-		csvForBean.toBean(ProvSupportType.class, "csv/" + PREFIX + "-prov-support-type.csv").forEach(t -> {
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
 			installSupportType(context, t.getName(), t);
 		});
-		csvForBean.toBean(ProvSupportPrice.class, "csv/" + PREFIX + "-prov-support-price.csv").forEach(t -> {
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
 			installSupportPrice(context, priceCode, t);
 		});
 
@@ -449,6 +453,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();
 			newType.setName(c);
+			newType.setNode(context.getNode());
 			return newType;
 		});
 
