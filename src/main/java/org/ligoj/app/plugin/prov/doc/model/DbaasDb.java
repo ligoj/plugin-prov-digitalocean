@@ -1,11 +1,14 @@
 package org.ligoj.app.plugin.prov.doc.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class Category {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class DbaasDb {
 	/**
 	 * SID
 	 */

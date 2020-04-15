@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,8 @@ import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
+import org.ligoj.app.plugin.prov.doc.model.DbaasDb;
+import org.ligoj.app.plugin.prov.doc.model.DbaasSize;
 import org.ligoj.app.plugin.prov.doc.model.Image;
 import org.ligoj.app.plugin.prov.doc.model.Options;
 import org.ligoj.app.plugin.prov.doc.model.Size;
@@ -35,6 +38,9 @@ import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Setter;
 
@@ -173,7 +179,19 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Database
 		nextStep(node, "install-database");
 		try (var curl = new CurlProcessor()) {
+			ObjectMapper mapper = new ObjectMapper();
+			
+			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
 			final var rawJS = StringUtils.defaultString(curl.get(getPricesApi() + "/aurora.js"), "");
+			Matcher engineMatcher=Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])").matcher(rawJS); 
+			//Engine
+			var dbaasDbs = mapper.readValue(StringUtils.replace(StringUtils.replace(engineMatcher.group(1),"!0","true"), "!1","false"), DbaasDb.class);
+			//Instance price
+			Matcher iMatcher=Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])").matcher(rawJS); 
+			var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1),"l",""), DbaasSize.class);
+			
+			// Price Multiplier 
+			final int PRICE_MULTIPLIER = 3;
 			// For each price/region/engine
 			// Install term, type and price
 			var engine = "MYSQL";
@@ -217,7 +235,9 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	private VmOs getOs(final String osName) {
 		return EnumUtils.getEnum(VmOs.class, osName.replace("redhat", "RHEL").replace("sles", "SUSE").toUpperCase());
 	}
-
+	/**
+	 * For a given image return Union of region_ids
+	 */
 	private Set<Integer> getRegionsUnion(final List<Image> images) {
 		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).collect(Collectors.toSet());
 	}

@@ -14,6 +14,11 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Options {
+	/**
+	 * SID
+	 */
+	private static final long serialVersionUID = 1L;
+	
 	private List<Distribution> distributions = Collections.emptyList();
 	private List<Size> sizes = Collections.emptyList();
 	private List<Region> regions = Collections.emptyList();

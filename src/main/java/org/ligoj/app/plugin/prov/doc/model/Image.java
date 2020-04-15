@@ -12,6 +12,10 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties
 public class Image {
+	/**
+	 * SID
+	 */
+	private static final long serialVersionUID = 1L;
 	
 	@JsonProperty("region_slug")
 	private String regionSlug;
