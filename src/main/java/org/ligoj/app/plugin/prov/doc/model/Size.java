@@ -34,7 +34,7 @@ public class Size extends NamedBean<Integer> {
 	@JsonProperty("memory_in_bytes")
 	private double memoryInBytes;
 	@JsonProperty("size_category")
-	private Category categorie;
+	private NamedBean<Integer> categorie;
 	List<Integer> regionIds = Collections.emptyList();
 
 	/**

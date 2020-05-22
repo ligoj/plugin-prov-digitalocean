@@ -8,13 +8,9 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DbaasSize {
-	/**
-	 * SID
-	 */
-	private static final long serialVersionUID = 1L;
 	
 	private int cpu;
-	private double monthlyPrice;
-	private double memory;
+	private int monthlyPrice;
+	private int memory;
 	private int disk;
 }

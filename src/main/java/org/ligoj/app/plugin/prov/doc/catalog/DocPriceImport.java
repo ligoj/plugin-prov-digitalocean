@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -16,7 +15,6 @@ import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
-import org.ligoj.app.plugin.prov.doc.model.DbaasDb;
 import org.ligoj.app.plugin.prov.doc.model.DbaasSize;
 import org.ligoj.app.plugin.prov.doc.model.Image;
 import org.ligoj.app.plugin.prov.doc.model.Options;
@@ -36,10 +34,13 @@ import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.INamableBean;
+import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
+import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Setter;
@@ -118,7 +119,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ETYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
-		context.getMapRegionToName().putAll(toMap("regions.json", MAP_LOCATION));
+		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
@@ -141,7 +142,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		nextStep(node, "retrieve-catalog");
 
 		// Instance(VM)
-
 		var monthlyTerm = installPriceTerm(context, "monthly", 1);
 		var hourlyTerm = installPriceTerm(context, "hourly", 0);
 
@@ -162,59 +162,88 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				final var os = getOs(d.getName());
 				getRegionsUnion(d.getImages()).stream().map(regionIds::get)
 						.forEach(r -> options.getSizes().forEach(s -> {
+							// Install monthly based price
 							installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
+
+							// Install hourly based price
 							installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(),
 									s.getPricePerHour() * context.getHoursMonth(), r);
 						}));
 			});
 
+			// Install storage
 			nextStep(node, "install-vm-storage");
 			var codeType = "-type-";
 			var priceCode = "-priceCode-";
 			var region = new ProvLocation();
 			var sType = installStorageType(context, codeType, new Object());
+			// TODO
 			// installStoragePrice(context, priceCode, sType, 123d, region);
 		}
 
 		// Database
 		nextStep(node, "install-database");
 		try (var curl = new CurlProcessor()) {
-			ObjectMapper mapper = new ObjectMapper();
-			
+			final var mapper = new ObjectMapper();
+
 			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
 			final var rawJS = StringUtils.defaultString(curl.get(getPricesApi() + "/aurora.js"), "");
-			Matcher engineMatcher=Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])").matcher(rawJS); 
-			//Engine
-			var dbaasDbs = mapper.readValue(StringUtils.replace(StringUtils.replace(engineMatcher.group(1),"!0","true"), "!1","false"), DbaasDb.class);
-			//Instance price
-			Matcher iMatcher=Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])").matcher(rawJS); 
-			var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1),"l",""), DbaasSize.class);
-			
-			// Price Multiplier 
+			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			// Engine
+			if (!engineMatcher.find()) {
+				// Prices format has changed too much, unable to parse data
+				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
+			}
+			final var dbaasDbs = mapper.readValue(StringUtils.replace(
+					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
+							.replaceAll("![^,}]+", "\"\""),
+					"!", ""), new TypeReference<List<NamedBean<Integer>>>() {
+					});
+			// Instance price
+			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			if (!iMatcher.find()) {
+				// Prices format has changed too much, unable to parse data
+				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
+			}
+			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""),
+					new TypeReference<List<DbaasSize>>() {
+					});
+
+			// Price Multiplier as default for stand-alone server
 			final int PRICE_MULTIPLIER = 3;
 			// For each price/region/engine
 			// Install term, type and price
-			var engine = "MYSQL";
-			var codeType = "-type-";
-			var region = "-france-";
-			var termCode = "-term-";
-			var priceCode = "-price-code-";
-			var byol = false;
-			String edition = null;
-			String storageEngine = null;
-			if (!isEnabledEngine(context, engine) || !isEnabledType(context, codeType)) {
-				// Ignored type
-				var type = installDatabaseType(context, codeType, new Object());
-				var term = context.getPriceTerms().get(hourlyTerm.getCode());
-				installDatabasePrice(context, term, priceCode, type, 123d, engine, edition, storageEngine, byol,
-						region);
-			}
+			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e)).forEach(engine -> {
+				dbaasSizes.stream().forEach(s -> {
+					final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
+					if (isEnabledDatabase(context, codeType)) {
+						var type = installDatabaseType(context, codeType, new Object());
+						context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
+								.forEach(region -> {
+									// Install monthly based price
+									var partialCode = codeType + "-" + engine;
+									installDatabasePrice(context, monthlyTerm,
+											monthlyTerm.getCode() + "-" + partialCode, type,
+											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, null, false, region);
 
-			// Storage
-			// Install type and price
+									// Install hourly based price
+									installDatabasePrice(context, monthlyTerm, hourlyTerm.getCode() + "-" + partialCode,
+											type,
+											s.getMonthlyPrice() * PRICE_MULTIPLIER / 672 * context.getHoursMonth(),
+											engine, null, null, false, region);
+
+								});
+					}
+				});
+			});
+
+			// Install storage
+			var codeType = "-type-";
+			var priceCode = "-priceCode-";
 			nextStep(node, "install-database-storage");
 			var sType = installStorageType(context, codeType, new Object());
-			installStoragePrice(context, priceCode, sType, 123d, region);
+			// TODO
+			// installStoragePrice(context, priceCode, sType, 123d, region);
 		}
 
 		// Support
@@ -222,19 +251,18 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		nextStep(node, "install-support");
 		var priceCode = "-price-code-";
 		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
-			installSupportType(context, t.getName(), t);
+			installSupportType(context, t.getCode(), t);
 		});
 		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
 			installSupportPrice(context, priceCode, t);
 		});
-
-		// TODO
 
 	}
 
 	private VmOs getOs(final String osName) {
 		return EnumUtils.getEnum(VmOs.class, osName.replace("redhat", "RHEL").replace("sles", "SUSE").toUpperCase());
 	}
+
 	/**
 	 * For a given image return Union of region_ids
 	 */
@@ -449,6 +477,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();
 			newType.setName(c);
+			newType.setCode(c);
 			newType.setNode(context.getNode());
 			return newType;
 		});
@@ -486,7 +515,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @return The previous or the new installed region.
 	 */
 	private ProvLocation installRegion(final UpdateContext context, final String region, final String name) {
-		final ProvLocation entity = context.getRegions().computeIfAbsent(region, r -> {
+		final var entity = context.getRegions().computeIfAbsent(region, r -> {
 			final ProvLocation newRegion = new ProvLocation();
 			newRegion.setNode(context.getNode());
 			newRegion.setName(region);
@@ -495,7 +524,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Update the location details as needed
 		return copyAsNeeded(context, entity, r -> {
-			final ProvLocation regionStats = context.getMapRegionToName().getOrDefault(r, new ProvLocation());
+			final var regionStats = context.getMapRegionToName().getOrDefault(r, new ProvLocation());
 			r.setContinentM49(regionStats.getContinentM49());
 			r.setCountryM49(regionStats.getCountryM49());
 			r.setCountryA2(regionStats.getCountryA2());

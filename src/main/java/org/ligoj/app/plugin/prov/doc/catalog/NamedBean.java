@@ -1,18 +1,14 @@
-package org.ligoj.app.plugin.prov.doc.model;
+package org.ligoj.app.plugin.prov.doc.catalog;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class DbaasDb {
+public class NamedBean extends org.ligoj.bootstrap.core.NamedBean<Integer> {
+
 	/**
 	 * SID
 	 */
 	private static final long serialVersionUID = 1L;
-	
-	private String name;
+
+	// Only there for JSON failsafe
 }

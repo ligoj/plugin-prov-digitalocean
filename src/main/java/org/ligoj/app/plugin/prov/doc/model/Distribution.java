@@ -12,12 +12,8 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown=true)
 public class Distribution {
-	/**
-	 * SID
-	 */
-	private static final long serialVersionUID = 1L;
 	
 	private String name;
-	List<Image> images = Collections.emptyList();
+	private List<Image> images = Collections.emptyList();
 
 }
