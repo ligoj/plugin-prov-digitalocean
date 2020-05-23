@@ -506,10 +506,11 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		// ---------------------------------
 		var sLookup = qsResource.lookup(subscription,
 				QuoteStorageQuery.builder().size(5).latency(Rate.LOW).instance(createInstance.getId()).build()).get(0);
-		Assertions.assertEquals(0.3, sLookup.getCost(), DELTA);
+		Assertions.assertEquals(0.5, sLookup.getCost(), DELTA);
 		var price = sLookup.getPrice();
+		Assertions.assertEquals("nyc1/do-block-storage-standard", price.getCode());
 		var type = price.getType();
-		Assertions.assertEquals("standardssd-e2", type.getCode());
+		Assertions.assertEquals("do-block-storage-standard", type.getCode());
 		Assertions.assertEquals("nyc1", price.getLocation().getName());
 		Assertions.assertEquals("North Europe", price.getLocation().getDescription());
 

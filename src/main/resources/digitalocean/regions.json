@@ -1,24 +1,117 @@
 {
-  "us-central": {
-    "name": "Central US",
-    "continentM49": 19,
-    "regionM49": 21,
-    "countryA2": "US",
-    "countryM49": 840,
-    "placement": "central",
-    "subRegion": "Iowa",
-    "latitude": 41.5908,
-    "longitude": -93.6208
-  },
-  "us-east": {
-    "name": "East US",
-    "continentM49": 19,
-    "regionM49": 21,
-    "countryM49": 840,
-    "countryA2": "US",
-    "placement": "east",
-    "subRegion": "Virginia",
-    "latitude": 37.3719,
-    "longitude": -79.8164
-  }
+    "nyc1": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryA2": "US",
+        "countryM49": 840,
+        "placement": "central",
+        "subRegion": "New York",
+        "latitude": 40.6974034,
+        "longitude": -74.1197626
+    },
+    "nyc2": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryA2": "US",
+        "countryM49": 840,
+        "placement": "central",
+        "subRegion": "New York",
+        "latitude": 41.5908,
+        "longitude": -93.6208
+    },
+    "nyc3": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryA2": "US",
+        "countryM49": 840,
+        "placement": "central",
+        "subRegion": "New York",
+        "latitude": 41.5908,
+        "longitude": -93.6208
+    },
+    "sfo1": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryM49": 840,
+        "countryA2": "US",
+        "placement": "east",
+        "subRegion": "California",
+        "latitude": 37.7576948,
+        "longitude": -122.4726193
+    },
+    "sfo2": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryM49": 840,
+        "countryA2": "US",
+        "placement": "east",
+        "subRegion": "California",
+        "latitude": 37.7576948,
+        "longitude": -122.4726193
+    },
+    "ams2": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryM49": 528,
+        "countryA2": "NL",
+        "placement": "east",
+        "subRegion": "Amsterdam",
+        "latitude": 52.3546449,
+        "longitude": 4.8339214
+    },
+    "ams3": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryM49": 528,
+        "countryA2": "NL",
+        "placement": "east",
+        "subRegion": "Amsterdam",
+        "latitude": 52.3546449,
+        "longitude": 4.8339214
+    },
+    "lon1": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryM49": 826,
+        "countryA2": "GB",
+        "placement": "south",
+        "subRegion": "London",
+        "latitude": 50.9000,
+        "longitude": -0.7000
+    },
+    "sgp1": {
+        "continentM49": 142,
+        "regionM49": 35,
+        "countryM49": 702,
+        "countryA2": "SG",
+        "latitude": 1.2000,
+        "longitude": 103.8000
+    },
+    "fra1": {
+        "continentM49": 150,
+        "regionM49": 155,
+        "countryM49": 276,
+        "countryA2": "DE",
+        "subRegion": "Frankfurt",
+        "latitude": 50.1000,
+        "longitude": 8.6000
+    },
+    "tor1": {
+        "continentM49": 19,
+        "regionM49": 21,
+        "countryM49": 124,
+        "countryA2": "CA",
+        "placement": "south",
+        "latitude": 43.6000,
+        "longitude": -79.3000
+    },
+    "blr1": {
+        "continentM49": 142,
+        "regionM49": 34,
+        "countryM49": 356,
+        "countryA2": "IN",
+        "placement": "south",
+        "latitude": 12.95396,
+        "longitude": 77.4908561
+    }
 }

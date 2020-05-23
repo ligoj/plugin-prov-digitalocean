@@ -4,6 +4,7 @@
 package org.ligoj.app.plugin.prov.doc.catalog;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -12,6 +13,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
@@ -38,6 +40,7 @@ import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.ligoj.bootstrap.core.resource.BusinessException;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonParser;
@@ -140,6 +143,15 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream()
 				.filter(r -> isEnabledRegion(context, r))
 				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
+		context.setRegionsDatabase(objectMapper.readValue(
+				IOUtils.toString(new ClassPathResource("digitalocean/regions-database.json").getInputStream(),
+						StandardCharsets.UTF_8),
+				new TypeReference<List<String>>() {
+				}));
+		context.setRegionsVolume(objectMapper
+				.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-volume.json").getInputStream(),
+						StandardCharsets.UTF_8), new TypeReference<List<String>>() {
+						}));
 
 		// Fetch the remote prices stream and build the prices object
 		nextStep(node, "retrieve-catalog");
@@ -214,7 +226,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 					final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
 					if (isEnabledDatabase(context, codeType)) {
 						var type = installDatabaseType(context, codeType, new Object());
-						context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
+						context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
 								.forEach(region -> {
 									// Install monthly based price
 									var partialCode = codeType + "/" + engine;
@@ -246,7 +258,28 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
 			installSupportPrice(context, t.getCode(), t);
 		});
+	}
 
+	/**
+	 * Check a database is available within the given region.
+	 * 
+	 * @param context The update context.
+	 * @param region  The region code to test.
+	 * @return <code>true</code> when the region is available and enabled for the database service.
+	 */
+	private boolean isEnabledRegionDatabase(UpdateContext context, final String region) {
+		return isEnabledRegion(context, region) && context.getRegionsDatabase().contains(region);
+	}
+
+	/**
+	 * Check a volume is available within the given region.
+	 * 
+	 * @param context The update context.
+	 * @param region  The region code to test.
+	 * @return <code>true</code> when the region is available and enabled for the volume service.
+	 */
+	private boolean isEnabledRegionVolume(UpdateContext context, final String region) {
+		return isEnabledRegion(context, region) && context.getRegionsVolume().contains(region);
 	}
 
 	/**
@@ -290,8 +323,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			t.setMaximal(16 * 1024d); // 16TiB
 			t.setOptimized(ProvStorageOptimized.IOPS);
 		});
-		context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
-				.forEach(r -> installStoragePrice(context, r, type, 0.1, r + "/" + type.getCode()));
+		context.getRegions().keySet().stream().filter(r -> isEnabledRegionVolume(context, r))
+				.forEach(region -> installStoragePrice(context, region, type, 0.1, region + "/" + type.getCode()));
 	}
 
 	private VmOs getOs(final String osName) {
