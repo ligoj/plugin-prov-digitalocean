@@ -1,2 +1,2 @@
-name;node.id
-nyc1;service:prov:digitalocean
+name;node.id;description
+nyc1;service:prov:digitalocean;New York 1

@@ -40,6 +40,7 @@ import org.ligoj.app.plugin.prov.catalog.ImportCatalogResource;
 import org.ligoj.app.plugin.prov.dao.ProvDatabasePriceRepository;
 import org.ligoj.app.plugin.prov.dao.ProvInstancePriceRepository;
 import org.ligoj.app.plugin.prov.dao.ProvInstanceTypeRepository;
+import org.ligoj.app.plugin.prov.dao.ProvLocationRepository;
 import org.ligoj.app.plugin.prov.dao.ProvQuoteInstanceRepository;
 import org.ligoj.app.plugin.prov.dao.ProvQuoteRepository;
 import org.ligoj.app.plugin.prov.dao.ProvQuoteStorageRepository;
@@ -49,6 +50,7 @@ import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
 import org.ligoj.app.plugin.prov.model.ProvQuoteInstance;
 import org.ligoj.app.plugin.prov.model.ProvQuoteStorage;
+import org.ligoj.app.plugin.prov.model.ProvStorageOptimized;
 import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.ProvUsage;
 import org.ligoj.app.plugin.prov.model.Rate;
@@ -100,6 +102,9 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 	@Autowired
 	private ProvInstancePriceRepository ipRepository;
+
+	@Autowired
+	private ProvLocationRepository lRepository;
 
 	@Autowired
 	private ProvDatabasePriceRepository bpRepository;
@@ -210,7 +215,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals("ds4v2", lookup.getPrice().getType().getCode());
 		Assertions.assertEquals(8, ipRepository.countBy("term.code", "three-year"));
 		Assertions.assertEquals("nyc1", lookup.getPrice().getLocation().getName());
-		Assertions.assertEquals("North Europe", lookup.getPrice().getLocation().getDescription());
+		Assertions.assertEquals("New York 1", lookup.getPrice().getLocation().getDescription());
 		checkImportStatus();
 
 		// Install again to check the update without change
@@ -446,6 +451,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	void installOnLine() throws Exception {
 		configuration.delete(DocPriceImport.CONF_API_PRICES);
 		configuration.put(DocPriceImport.CONF_REGIONS, "nyc1");
+		// TODO Change filters
 		configuration.put(DocPriceImport.CONF_ITYPE, "(ds4|a4).*");
 		configuration.put(DocPriceImport.CONF_DTYPE, "(sql-bc-gen5-16|gp-gen5-.*)");
 		configuration.put(DocPriceImport.CONF_ENGINE, "(MYSQL|POSTGRESQL|SQL SERVER)");
@@ -482,19 +488,20 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 		// Request an instance for a specific OS
 		var lookup = qiResource.lookup(subscription,
-				builder().cpu(8).ram(256000).constant(true).os(VmOs.CENTOS).usage("36month").build());
-		Assertions.assertEquals("nyc1/monthly/centos/m6-32vcpu-256gb", lookup.getPrice().getCode());
+				builder().cpu(8).ram(256000).constant(true).os(VmOs.CENTOS).location("sfo2").usage("36month").build());
+		Assertions.assertEquals("sfo2/monthly/centos/m6-32vcpu-256gb", lookup.getPrice().getCode());
 
 		// Request an instance for a generic Linux OS
-		lookup = qiResource.lookup(subscription, builder().constant(true).type("s-1vcpu-1gb")
-				.os(VmOs.LINUX).usage("36month").build());
-		Assertions.assertEquals("nyc1/monthly/centos/s-1vcpu-1gb", lookup.getPrice().getCode());
+		lookup = qiResource.lookup(subscription,
+				builder().constant(true).type("s-1vcpu-1gb").os(VmOs.LINUX).location("sfo2").usage("36month").build());
+		Assertions.assertEquals("sfo2/monthly/centos/s-1vcpu-1gb", lookup.getPrice().getCode());
 		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
 
 		// New instance for "s-1vcpu-1gb"
 		var ivo = new QuoteInstanceEditionVo();
 		ivo.setCpu(1d);
 		ivo.setRam(1);
+		ivo.setLocation("sfo2");
 		ivo.setPrice(lookup.getPrice().getId());
 		ivo.setName("server1");
 		ivo.setSubscription(subscription);
@@ -502,17 +509,60 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertTrue(createInstance.getTotal().getMin() > 1);
 		Assertions.assertTrue(createInstance.getId() > 0);
 
-		// Lookup STANDARD SSD storage to a Basic instance
+		// Lookup block storage (volume) within a region different from the one of attached server -> no match
 		// ---------------------------------
-		var sLookup = qsResource.lookup(subscription,
-				QuoteStorageQuery.builder().size(5).latency(Rate.LOW).instance(createInstance.getId()).build()).get(0);
+		Assertions.assertEquals(0,
+				qsResource.lookup(subscription,
+						QuoteStorageQuery.builder().size(5).location("sgp1").instance(createInstance.getId()).build())
+						.size());
+
+		// Lookup block storage (volume) unavailable within this location
+		// ---------------------------------
+		Assertions.assertEquals(0, qsResource.lookup(subscription,
+				QuoteStorageQuery.builder().size(5).location("sfo1").optimized(ProvStorageOptimized.IOPS).build())
+				.size());
+
+		// Lookup STANDARD SSD storage within the same region than the attached server
+		// ---------------------------------
+		var sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW)
+				.location("sfo2").instance(createInstance.getId()).build()).get(0);
 		Assertions.assertEquals(0.5, sLookup.getCost(), DELTA);
 		var price = sLookup.getPrice();
-		Assertions.assertEquals("nyc1/do-block-storage-standard", price.getCode());
+		Assertions.assertEquals("sfo2/do-block-storage-standard", price.getCode());
 		var type = price.getType();
 		Assertions.assertEquals("do-block-storage-standard", type.getCode());
-		Assertions.assertEquals("nyc1", price.getLocation().getName());
-		Assertions.assertEquals("North Europe", price.getLocation().getDescription());
+		Assertions.assertEquals("sfo2", price.getLocation().getName());
+		Assertions.assertEquals("San Francisco 2", price.getLocation().getDescription());
+
+		// Lookup snapshot
+		// ---------------------------------
+		sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW).location("sfo1")
+				.optimized(ProvStorageOptimized.DURABILITY).build()).get(0);
+		Assertions.assertEquals(0.25, sLookup.getCost(), DELTA);
+		price = sLookup.getPrice();
+		Assertions.assertEquals("sfo1/do-snapshot", price.getCode());
+		type = price.getType();
+		Assertions.assertEquals("do-snapshot", type.getCode());
+		Assertions.assertEquals("sfo1", price.getLocation().getName());
+		Assertions.assertEquals("San Francisco 1", price.getLocation().getDescription());
+		Assertions.assertEquals("California", price.getLocation().getSubRegion());
+
+		// Lookup Database unavailable in a region
+		// ---------------------------------
+		Assertions.assertNull(qbResource.lookup(subscription,
+				QuoteDatabaseQuery.builder().location("sfo1").engine("MySQL").cpu(3).build()));
+
+		// Lookup Database in an available region
+		// ---------------------------------
+		var dLookup = qbResource.lookup(subscription, QuoteDatabaseQuery.builder().engine("MySQL").cpu(2).build());
+		Assertions.assertEquals(60, dLookup.getCost(), DELTA);
+		var dPrice = dLookup.getPrice();
+		Assertions.assertEquals("nyc1/monthly/db-2-4/MySQL", dPrice.getCode());
+		var dType = dPrice.getType();
+		Assertions.assertEquals("db-2-4", dType.getCode());
+		Assertions.assertEquals("DB 2vCPU 4GiB", dType.getName());
+		Assertions.assertEquals("nyc1", dPrice.getLocation().getName());
+		Assertions.assertEquals("New York 1", dPrice.getLocation().getDescription());
 
 		em.flush();
 		em.clear();

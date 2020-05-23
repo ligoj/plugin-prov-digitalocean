@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -103,6 +104,12 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * restriction.
 	 */
 	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
+
+	/**
+	 * Price Multiplier as default for stand-alone server. This value is different for read-only node (not yet
+	 * supported)
+	 */
+	private static final double PRICE_MULTIPLIER = 3d;
 
 	private String getPricesApi() {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
@@ -217,28 +224,26 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 					new TypeReference<List<DbaasSize>>() {
 					});
 
-			// Price Multiplier as default for stand-alone server
-			final int PRICE_MULTIPLIER = 3;
 			// For each price/region/engine
 			// Install term, type and price
 			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e)).forEach(engine -> {
 				dbaasSizes.stream().forEach(s -> {
 					final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
 					if (isEnabledDatabase(context, codeType)) {
-						var type = installDatabaseType(context, codeType, new Object());
+						var type = installDatabaseType(context, codeType, s);
 						context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
 								.forEach(region -> {
 									// Install monthly based price
 									var partialCode = codeType + "/" + engine;
 									installDatabasePrice(context, monthlyTerm,
 											monthlyTerm.getCode() + "/" + partialCode, type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, null, false, region);
+											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
 
 									// Install hourly based price
-									installDatabasePrice(context, monthlyTerm, hourlyTerm.getCode() + "-" + partialCode,
+									installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode,
 											type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER / 672 * context.getHoursMonth(),
-											engine, null, null, false, region);
+											s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(),
+											engine, null, false, region);
 
 								});
 					}
@@ -267,7 +272,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @param region  The region code to test.
 	 * @return <code>true</code> when the region is available and enabled for the database service.
 	 */
-	private boolean isEnabledRegionDatabase(UpdateContext context, final String region) {
+	private boolean isEnabledRegionDatabase(final UpdateContext context, final String region) {
 		return isEnabledRegion(context, region) && context.getRegionsDatabase().contains(region);
 	}
 
@@ -462,7 +467,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new database type as needed.
 	 */
-	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code, final Object aType) {
+	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code,
+			final DbaasSize aType) {
 		final var type = context.getDatabaseTypes().computeIfAbsent(code, c -> {
 			final var newType = new ProvDatabaseType();
 			newType.setNode(context.getNode());
@@ -472,10 +478,9 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Merge as needed
 		return copyAsNeeded(context, type, t -> {
-			t.setName(code /* human readable name */);
-			t.setCpu(2d);
-			t.setRam((int) 2 * 1024); // Convert in MiB
-			t.setDescription("-description'");
+			t.setName("DB " + aType.getCpu() + "vCPU " + aType.getMemory() + "GiB");
+			t.setCpu((double) aType.getCpu());
+			t.setRam((int) aType.getMemory() * 1024); // Convert in MiB
 			t.setConstant(true);
 			t.setAutoScale(false);
 
@@ -492,7 +497,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 */
 	private void installDatabasePrice(final UpdateContext context, final ProvInstancePriceTerm term,
 			final String localCode, final ProvDatabaseType type, final double monthlyCost, final String engine,
-			final String edition, final String storageEngine, final boolean byol, final String region) {
+			final String storageEngine, final boolean byol, final String region) {
 		final var price = context.getPreviousDatabase().computeIfAbsent(region + "/" + localCode, c -> {
 			// New instance price
 			final var newPrice = new ProvDatabasePrice();
@@ -502,8 +507,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		copyAsNeeded(context, price, p -> {
 			p.setLocation(installRegion(context, region));
-			p.setEngine(engine);
-			p.setEdition(edition);
+			p.setEngine(engine.toUpperCase(Locale.ENGLISH));
 			p.setStorageEngine(storageEngine);
 			p.setLicense(null /* ProvInstancePrice.LICENSE_BYOL */);
 			p.setTerm(term);
@@ -580,7 +584,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 */
 	private ProvLocation installRegion(final UpdateContext context, final String region, final String name) {
 		final var entity = context.getRegions().computeIfAbsent(region, r -> {
-			final ProvLocation newRegion = new ProvLocation();
+			final var newRegion = new ProvLocation();
 			newRegion.setNode(context.getNode());
 			newRegion.setName(region);
 			return newRegion;
@@ -588,7 +592,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Update the location details as needed
 		return copyAsNeeded(context, entity, r -> {
-			final var regionStats = context.getMapRegionToName().getOrDefault(r, new ProvLocation());
+			final var regionStats = context.getMapRegionToName().getOrDefault(region, new ProvLocation());
 			r.setContinentM49(regionStats.getContinentM49());
 			r.setCountryM49(regionStats.getCountryM49());
 			r.setCountryA2(regionStats.getCountryA2());
