@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -47,6 +48,8 @@ import lombok.Setter;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
+ * 
+ * @see <a href="https://www.digitalocean.com/pricing/">pricing</a>
  */
 @Component
 @Setter
@@ -170,15 +173,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 									s.getPricePerHour() * context.getHoursMonth(), r);
 						}));
 			});
-
-			// Install storage
-			nextStep(node, "install-vm-storage");
-			var codeType = "-type-";
-			var priceCode = "-priceCode-";
-			var region = new ProvLocation();
-			var sType = installStorageType(context, codeType, new Object());
-			// TODO
-			// installStoragePrice(context, priceCode, sType, 123d, region);
 		}
 
 		// Database
@@ -194,11 +188,13 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
-			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
-							.replaceAll("![^,}]+", "\"\""),
-					"!", ""), new TypeReference<List<NamedBean<Integer>>>() {
-					});
+			final var dbaasDbs = mapper
+					.readValue(
+							StringUtils.replace(StringUtils
+									.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
+									.replaceAll("![^,}]+", "\"\""), "!", ""),
+							new TypeReference<List<NamedBean<Integer>>>() {
+							});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
@@ -221,9 +217,9 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 						context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
 								.forEach(region -> {
 									// Install monthly based price
-									var partialCode = codeType + "-" + engine;
+									var partialCode = codeType + "/" + engine;
 									installDatabasePrice(context, monthlyTerm,
-											monthlyTerm.getCode() + "-" + partialCode, type,
+											monthlyTerm.getCode() + "/" + partialCode, type,
 											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, null, false, region);
 
 									// Install hourly based price
@@ -236,27 +232,66 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 					}
 				});
 			});
-
-			// Install storage
-			var codeType = "-type-";
-			var priceCode = "-priceCode-";
-			nextStep(node, "install-database-storage");
-			var sType = installStorageType(context, codeType, new Object());
-			// TODO
-			// installStoragePrice(context, priceCode, sType, 123d, region);
 		}
+
+		// Install storage
+		installStorage(context);
 
 		// Support
 		// Install type and price
 		nextStep(node, "install-support");
-		var priceCode = "-price-code-";
 		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
 			installSupportType(context, t.getCode(), t);
 		});
 		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
-			installSupportPrice(context, priceCode, t);
+			installSupportPrice(context, t.getCode(), t);
 		});
 
+	}
+
+	/**
+	 * Install the storage types and prices.
+	 */
+	private void installStorage(final UpdateContext context) {
+		final var node = context.getNode();
+		nextStep(node, "install-vm-storage");
+
+		// Block storage
+		// See https://www.digitalocean.com/docs/volumes/
+		// Standard
+		installBlockStorage(context, "do-block-storage-standard", t -> {
+			t.setIops(5000);
+			t.setThroughput(200);
+			t.setInstanceType("s-%");
+		});
+
+		// Optimized
+		installBlockStorage(context, "do-block-storage-optimized", t -> {
+			t.setIops(7500);
+			t.setThroughput(300);
+			t.setNotInstanceType("s-%");
+			t.setInstanceType("%");
+		});
+
+		// Snapshot
+		final var ssType = installStorageType(context, "do-snapshot", t -> {
+			t.setLatency(Rate.GOOD);
+			t.setDurability9(11);
+			t.setOptimized(ProvStorageOptimized.DURABILITY);
+		});
+		context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
+				.forEach(r -> installStoragePrice(context, r, ssType, 0.05, r + "/" + ssType.getCode()));
+	}
+
+	private void installBlockStorage(UpdateContext context, final String code, final Consumer<ProvStorageType> filler) {
+		final var type = installStorageType(context, code, t -> {
+			filler.accept(t);
+			t.setLatency(Rate.GOOD);
+			t.setMaximal(16 * 1024d); // 16TiB
+			t.setOptimized(ProvStorageOptimized.IOPS);
+		});
+		context.getRegions().keySet().stream().filter(r -> isEnabledRegion(context, r))
+				.forEach(r -> installStoragePrice(context, r, type, 0.1, r + "/" + type.getCode()));
 	}
 
 	private VmOs getOs(final String osName) {
@@ -273,7 +308,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install or update a storage type.
 	 */
-	private ProvStorageType installStorageType(final UpdateContext context, final String code, final Object aType) {
+	private ProvStorageType installStorageType(final UpdateContext context, final String code,
+			final Consumer<ProvStorageType> aType) {
 		final var type = context.getStorageTypes().computeIfAbsent(code, c -> {
 			final var newType = new ProvStorageType();
 			newType.setNode(context.getNode());
@@ -283,16 +319,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		return copyAsNeeded(context, type, t -> {
 			t.setName(code /* human readable name */);
-			t.setLatency(Rate.MEDIUM);
-			t.setAvailability(99d);
 			t.setMinimal(1);
 			t.setIncrement(null);
-			t.setMaximal(1024d);
-			t.setOptimized(ProvStorageOptimized.IOPS);
-			t.setIops(10);
-			t.setThroughput(20);
-			t.setInstanceType("%");
-			t.setDatabaseType("%");
+			t.setAvailability(99d);
+			aType.accept(t);
 		}, stRepository);
 	}
 
@@ -323,7 +353,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	private void installInstancePrice(final UpdateContext context, final ProvInstancePriceTerm term, final VmOs os,
 			final ProvInstanceType type, final double monthlyCost, final ProvLocation region) {
 		final var price = context.getPrevious().computeIfAbsent(
-				region.getName() + "/" + term.getCode() + "/" + type.getCode() + "/" + os.name(), code -> {
+				region.getName() + "/" + term.getCode() + "/" + os.name().toLowerCase() + "/" + type.getCode(),
+				code -> {
 					// New instance price (not update mode)
 					final var newPrice = new ProvInstancePrice();
 					newPrice.setCode(code);
@@ -358,7 +389,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		return copyAsNeeded(context, type, t -> {
 			t.setName(code);
 			t.setCpu(aType.getCpu());
-			t.setRam((int) Math.ceil(aType.getMemoryInBytes() / 1024 / 1024 / 1024));
+			t.setRam((int) Math.ceil(aType.getMemoryInBytes() / 1024 / 1024)); // Convert in MiB
 			t.setDescription("{Disk: " + aType.getDisk() + ", Category: " + aType.getCategorie().getName() + "}");
 			t.setConstant(true);
 			t.setAutoScale(false);
@@ -410,7 +441,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		return copyAsNeeded(context, type, t -> {
 			t.setName(code /* human readable name */);
 			t.setCpu(2d);
-			t.setRam((int) 2 * 1024);
+			t.setRam((int) 2 * 1024); // Convert in MiB
 			t.setDescription("-description'");
 			t.setConstant(true);
 			t.setAutoScale(false);

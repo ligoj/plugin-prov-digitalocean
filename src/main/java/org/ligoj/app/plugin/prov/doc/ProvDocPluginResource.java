@@ -14,6 +14,7 @@ import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
 import org.ligoj.app.plugin.prov.doc.catalog.DocPriceImport;
+import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
@@ -133,5 +134,10 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 	public void create(final int subscription) {
 		// Authenticate only for the check
 		authenticate(subscriptionResource.getParameters(subscription), new DocCurlProcessor());
+	}
+
+	@Override
+	public VmOs getCatalogOs(final VmOs os) {
+		return os == VmOs.LINUX ? VmOs.CENTOS : os;
 	}
 }
