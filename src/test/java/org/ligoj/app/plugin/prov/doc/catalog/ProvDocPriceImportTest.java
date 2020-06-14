@@ -8,10 +8,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.ligoj.app.plugin.prov.quote.instance.QuoteInstanceQuery.builder;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 
 import javax.annotation.PostConstruct;
@@ -37,10 +35,8 @@ import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.QuoteVo;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogResource;
-import org.ligoj.app.plugin.prov.dao.ProvQuoteInstanceRepository;
 import org.ligoj.app.plugin.prov.dao.ProvQuoteRepository;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
-import org.ligoj.app.plugin.prov.doc.model.Options;
 import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
 import org.ligoj.app.plugin.prov.model.ProvQuoteInstance;
@@ -65,8 +61,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Test class of {@link DocPriceImport}
@@ -101,9 +95,6 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 	@Autowired
 	private ConfigurationResource configuration;
-
-	@Autowired
-	private ProvQuoteInstanceRepository qiRepository;
 
 	protected int subscription;
 
@@ -340,8 +331,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	@Test
 	void installOnLine() throws Exception {
 		configuration.delete(DocPriceImport.CONF_API_PRICES);
-		configuration.put(DocPriceImport.CONF_REGIONS, "(sfo1|sfo2|ny1|sgp1)");
-		// TODO Change filters
+		configuration.put(DocPriceImport.CONF_REGIONS, "(sfo1|sfo2|nyc1|sgp1)");
 		configuration.put(DocPriceImport.CONF_ITYPE, "(m6-|s-).*");
 		configuration.put(DocPriceImport.CONF_DTYPE, "(db-1|db-2).*");
 		configuration.put(DocPriceImport.CONF_ENGINE, "(MYSQL)");
@@ -349,7 +339,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 		// Check the reserved
 		final var quote = installAndConfigure();
-		Assertions.assertTrue(quote.getCost().getMin() > 150);
+		Assertions.assertTrue(quote.getCost().getMin() >= 15);
 
 		// Check the spot
 		final var lookup = qiResource.lookup(subscription,
@@ -359,7 +349,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var instance2 = lookup.getPrice();
 		Assertions.assertEquals("monthly", instance2.getTerm().getCode());
 		Assertions.assertEquals("m6-32vcpu-256gb", instance2.getType().getCode());
-		Assertions.assertEquals("sfo2/monthly/centos/m6-32vcpu-256gb", instance2.getType().getName());
+		Assertions.assertEquals("nyc1/monthly/centos/m6-32vcpu-256gb", instance2.getCode());
 	}
 
 	/**
@@ -471,16 +461,5 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	 */
 	private int getSubscription(final String project) {
 		return getSubscription(project, ProvDocPluginResource.KEY);
-	}
-
-	private Options buildOptions() {
-		final String filePath = "/mock-server/digitalocean/options_for_create.json";
-		try {
-			return new ObjectMapper().readValue(new File(getClass().getResource(filePath).toURI()), Options.class);
-		} catch (IOException | URISyntaxException ex) {
-			ex.printStackTrace();
-			return null;
-		}
-
 	}
 }
