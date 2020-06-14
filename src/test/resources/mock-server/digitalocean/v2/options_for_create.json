@@ -1,8 +1,8 @@
-{
+{	"source" : "https://ligoj.io/plugins/plugin-prov-digitalocean/options_for_create.json",
     "distributions":[
         {"id":3,"name":"CentOS","images":[
-            {"id":58134745,"name":"8.1 x64","region_id":8,"region_ids":[1,3,4,5,6,7,8,9,10,11,12,13],"slug_name":"centos-8-x64","disk":20,"distribution_name":"CentOS","region_slug":"nyc3","billable_size_in_gb":10.73741824},
-            {"id":50903182,"name":"7.6 x64","region_id":8,"region_ids":[1,3,4,5,6,7,8,9,10,11,12,13],"slug_name":"centos-7-x64","disk":20,"distribution_name":"CentOS","region_slug":"nyc3","billable_size_in_gb":0.434676517}
+            {"id":58134745,"name":"8.1 x64","region_id":8,"region_ids":[1,3,4,5,6,7,8,9,10,11,12],"slug_name":"centos-8-x64","disk":20,"distribution_name":"CentOS","region_slug":"nyc3","billable_size_in_gb":10.73741824},
+            {"id":50903182,"name":"7.6 x64","region_id":8,"region_ids":[3,4,6,7,8,9,10,11,12,13],"slug_name":"centos-7-x64","disk":20,"distribution_name":"CentOS","region_slug":"nyc3","billable_size_in_gb":0.434676517}
         ]}
     ],
     
@@ -13,11 +13,11 @@
         ]}],
     
     "sizes":[
-        {"id":105,"name":"s-1vcpu-1gb","cpu_count":1,"price_per_hour":0.007439999841153622,"price_per_month":5.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":1073741824000,"memory_in_bytes":1073741824,"size_category":{"id":1,"name":"Standard"},"region_ids":[1,3,4,5,6,7,8,9,10,11,12,13]},
-        {"id":84,"name":"c-2-4GiB","cpu_count":2,"price_per_hour":0.05999999865889549,"price_per_month":40.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":4294967296,"size_category":{"id":3,"name":"CPU Intensive"},"region_ids":[1,6,7,8,9,10,11,12,13]},
-        {"id":124,"name":"g-2vcpu-8gb","cpu_count":2,"price_per_hour":0.08928570151329041,"price_per_month":60.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":8589934592,"size_category":{"id":4,"name":"General Purpose"},"region_ids":[1,6,7,8,9,10,12]},
-        {"id":130,"name":"gd-2vcpu-8gb","cpu_count":2,"price_per_hour":0.0967262014746666,"price_per_month":65.0,"disk":50,"disk_in_bytes":53687091200,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":8589934592,"size_category":{"id":5,"name":"General Purpose 2x SSD"},"region_ids":[6,7,8,9,10,12]},
-        {"id":155,"name":"m6-32vcpu-256gb","cpu_count":32,"price_per_hour":3.333329916000366,"price_per_month":2240.0,"disk":4800,"disk_in_bytes":5153960755200,"bandwidth_in_bytes":10737418240000,"memory_in_bytes":274877906944,"size_category":{"id":8,"name":"Memory Optimized 6x SSD"},"region_ids":[7,9]}
+        {"id":105,"name":"s-1vcpu-1gb","cpu_count":1,"price_per_hour":0.008439999841153622,"price_per_month":6.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":1073741824000,"memory_in_bytes":1073741824,"size_category":{"id":1,"name":"Standard"},"region_ids":[1,3,4,5,6,7,8,9,10,11,12,13]},
+        {"id":84,"name":"c-2-4GiB","cpu_count":2,"price_per_hour":0.06999999865889549,"price_per_month":41.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":4294967296,"size_category":{"id":3,"name":"CPU Intensive"},"region_ids":[1,6,7,8,9,10,11,12,13]},
+        {"id":124,"name":"g-2vcpu-8gb","cpu_count":2,"price_per_hour":0.09928570151329041,"price_per_month":61.0,"disk":25,"disk_in_bytes":26843545600,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":8589934592,"size_category":{"id":4,"name":"General Purpose"},"region_ids":[1,6,7,8,9,10,12]},
+        {"id":130,"name":"gd-2vcpu-8gb","cpu_count":2,"price_per_hour":0.1067262014746666,"price_per_month":66.0,"disk":50,"disk_in_bytes":53687091200,"bandwidth_in_bytes":4294967296000,"memory_in_bytes":8589934592,"size_category":{"id":5,"name":"General Purpose 2x SSD"},"region_ids":[6,7,8,9,10,12]},
+        {"id":155,"name":"m6-32vcpu-256gb","cpu_count":32,"price_per_hour":3.433329916000366,"price_per_month":2241.0,"disk":4800,"disk_in_bytes":5153960755200,"bandwidth_in_bytes":10737418240000,"memory_in_bytes":274877906944,"size_category":{"id":8,"name":"Memory Optimized 6x SSD"},"region_ids":[7,9]}
     ],
     
     "regions":[{"id":1,"name":"New York 1","slug":"nyc1","geography":"nyc"},{"id":3,"name":"San Francisco 1","slug":"sfo1","geography":"sfo"},{"id":4,"name":"New York 2","slug":"nyc2","geography":"nyc"},{"id":5,"name":"Amsterdam 2","slug":"ams2","geography":"ams"},{"id":6,"name":"Singapore 1","slug":"sgp1","geography":"sgp"},{"id":7,"name":"London 1","slug":"lon1","geography":"lon"},{"id":8,"name":"New York 3","slug":"nyc3","geography":"nyc"},{"id":9,"name":"Amsterdam 3","slug":"ams3","geography":"ams"},{"id":10,"name":"Frankfurt 1","slug":"fra1","geography":"fra"},{"id":11,"name":"Toronto 1","slug":"tor1","geography":"tor"},{"id":12,"name":"San Francisco 2","slug":"sfo2","geography":"sfo"},{"id":13,"name":"Bangalore 1","slug":"blr1","geography":"blr"}]

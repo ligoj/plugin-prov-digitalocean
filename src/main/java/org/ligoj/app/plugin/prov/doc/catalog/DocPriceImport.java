@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -23,6 +24,7 @@ import org.ligoj.app.plugin.prov.doc.model.DbaasSize;
 import org.ligoj.app.plugin.prov.doc.model.Image;
 import org.ligoj.app.plugin.prov.doc.model.Options;
 import org.ligoj.app.plugin.prov.doc.model.Size;
+import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
 import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
 import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
 import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
@@ -115,6 +117,11 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
 	}
 
+	@Override
+	protected int getWorkload(final ImportCatalogStatus status) {
+		return 6; // init + get catalog + vm + db + support+storage
+	}
+
 	/**
 	 * Install or update prices.
 	 *
@@ -135,8 +142,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
-		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
-				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
+		context.setDatabaseTypes(dtRepository.findAllBy(BY_NODE, node).stream()
+				.collect(Collectors.toMap(ProvDatabaseType::getCode, Function.identity())));
 		context.setPriceTerms(iptRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstancePriceTerm::getCode, Function.identity())));
 		context.setStorageTypes(stRepository.findAllBy(BY_NODE, node).stream()
@@ -162,6 +169,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Fetch the remote prices stream and build the prices object
 		nextStep(node, "retrieve-catalog");
+		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
+				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
 
 		// Instance(VM)
 		var monthlyTerm = installPriceTerm(context, "monthly", 1);
@@ -175,14 +184,16 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			// For each price/region/OS/software
 			// Install term, type and price
 			nextStep(node, "install-vm");
-			options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
+			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
+					.collect(Collectors.toList()));
+			options.getRegions()
 					.forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
-			options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
-					.forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
-
+			options.setSizes(options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
+					.collect(Collectors.toList()));
+			options.getSizes().forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
 			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName()))).forEach(d -> {
 				final var os = getOs(d.getName());
-				getRegionsUnion(d.getImages()).stream().map(regionIds::get)
+				getRegionsUnion(d.getImages()).stream().map(regionIds::get).filter(Objects::nonNull)
 						.forEach(r -> options.getSizes().forEach(s -> {
 							// Install monthly based price
 							installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
@@ -196,6 +207,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Database
 		nextStep(node, "install-database");
+		context.setPreviousDatabase(dpRepository.findAllBy("term.node", node).stream()
+				.collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
 		try (var curl = new CurlProcessor()) {
 			final var mapper = new ObjectMapper();
 
