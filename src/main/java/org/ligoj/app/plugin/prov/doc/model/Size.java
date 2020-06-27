@@ -1,10 +1,7 @@
 package org.ligoj.app.plugin.prov.doc.model;
 
-import java.util.Collections;
-import java.util.List;
-
+import org.ligoj.app.plugin.prov.doc.catalog.NamedBean;
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
-import org.ligoj.bootstrap.core.NamedBean;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -16,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Size extends NamedBean<Integer> {
+public class Size extends NamedBean {
 
 	/**
 	 * SID
@@ -34,8 +31,7 @@ public class Size extends NamedBean<Integer> {
 	@JsonProperty("memory_in_bytes")
 	private double memoryInBytes;
 	@JsonProperty("size_category")
-	private NamedBean<Integer> categorie;
-	List<Integer> regionIds = Collections.emptyList();
+	private NamedBean categorie;
 
 	/**
 	 * Resolved instance type entity.

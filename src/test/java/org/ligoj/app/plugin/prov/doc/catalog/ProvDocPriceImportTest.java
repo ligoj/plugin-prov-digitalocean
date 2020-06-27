@@ -11,6 +11,8 @@ import static org.ligoj.app.plugin.prov.quote.instance.QuoteInstanceQuery.builde
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
 import javax.transaction.Transactional;
@@ -55,6 +57,7 @@ import org.ligoj.app.plugin.prov.quote.storage.ProvQuoteStorageResource;
 import org.ligoj.app.plugin.prov.quote.storage.QuoteStorageEditionVo;
 import org.ligoj.app.plugin.prov.quote.storage.QuoteStorageQuery;
 import org.ligoj.app.plugin.prov.quote.support.ProvQuoteSupportResource;
+import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -165,6 +168,86 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 			t.setDone(0);
 			t.setPhase(null);
 		});
+	}
+
+	@Test
+	void installOffLineKoSizes() throws Exception {
+		configuration.put(DocPriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
+		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
+				.withStatus(HttpStatus.SC_OK)
+				.withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
+						"UTF-8"))));
+		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
+				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(), "UTF-8"))));
+		httpServer.start();
+
+		Assertions.assertThrows(BusinessException.class, ()-> resource.install(false));
+	}
+
+	@Test
+	void installOffLineKoPrices() throws Exception {
+		configuration.put(DocPriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
+		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
+				.withStatus(HttpStatus.SC_OK)
+				.withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
+						"UTF-8"))));
+		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
+				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(), "UTF-8"))));
+		httpServer.start();
+
+		Assertions.assertThrows(BusinessException.class, ()-> resource.install(false));
+	}
+
+	@Test
+	void isEnabledRegionDatabaseDisabled() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("--"));
+		Assertions.assertFalse(resource.isEnabledRegionDatabase(context , "any"));
+	}
+
+	@Test
+	void isEnabledRegionDatabaseUnavailable() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("sf1"));
+		context.setRegionsDatabase(Collections.singletonList("sf2"));
+		Assertions.assertFalse(resource.isEnabledRegionDatabase(context , "sf1"));
+	}
+
+	@Test
+	void isEnabledRegionDatabaseAvailable() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("sf1"));
+		context.setRegionsDatabase(Collections.singletonList("sf1"));
+		Assertions.assertTrue(resource.isEnabledRegionDatabase(context , "sf1"));
+	}
+
+	
+
+	@Test
+	void isEnabledRegionVolumeDisabled() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("--"));
+		Assertions.assertFalse(resource.isEnabledRegionVolume(context , "any"));
+	}
+
+	@Test
+	void isEnabledRegionVolumeUnavailable() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("sf1"));
+		context.setRegionsVolume(Collections.singletonList("sf2"));
+		Assertions.assertFalse(resource.isEnabledRegionVolume(context , "sf1"));
+	}
+
+	@Test
+	void isEnabledRegionVolumeAvailable() {
+		final var context = new UpdateContext();
+		context.setValidRegion(Pattern.compile("sf1"));
+		context.setRegionsVolume(Collections.singletonList("sf1"));
+		Assertions.assertTrue(resource.isEnabledRegionVolume(context , "sf1"));
 	}
 
 	@Test

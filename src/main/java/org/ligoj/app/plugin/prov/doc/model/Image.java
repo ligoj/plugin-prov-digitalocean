@@ -12,9 +12,7 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Image {
-	
-	@JsonProperty("region_slug")
-	private String regionSlug;
+
 	@JsonProperty("region_ids")
 	private List<Integer> regionIds;
 }

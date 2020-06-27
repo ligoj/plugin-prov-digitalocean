@@ -40,7 +40,6 @@ import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.INamableBean;
-import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
@@ -225,7 +224,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 							StringUtils.replace(StringUtils
 									.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
 									.replaceAll("![^,}]+", "\"\""), "!", ""),
-							new TypeReference<List<NamedBean<Integer>>>() {
+							new TypeReference<List<NamedBean>>() {
 							});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
@@ -285,7 +284,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @param region  The region code to test.
 	 * @return <code>true</code> when the region is available and enabled for the database service.
 	 */
-	private boolean isEnabledRegionDatabase(final UpdateContext context, final String region) {
+	protected boolean isEnabledRegionDatabase(final UpdateContext context, final String region) {
 		return isEnabledRegion(context, region) && context.getRegionsDatabase().contains(region);
 	}
 
@@ -296,7 +295,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @param region  The region code to test.
 	 * @return <code>true</code> when the region is available and enabled for the volume service.
 	 */
-	private boolean isEnabledRegionVolume(UpdateContext context, final String region) {
+	protected boolean isEnabledRegionVolume(UpdateContext context, final String region) {
 		return isEnabledRegion(context, region) && context.getRegionsVolume().contains(region);
 	}
 
