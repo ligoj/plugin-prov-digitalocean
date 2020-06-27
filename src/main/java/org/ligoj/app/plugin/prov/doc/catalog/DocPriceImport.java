@@ -20,10 +20,10 @@ import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
-import org.ligoj.app.plugin.prov.doc.model.DbaasSize;
+import org.ligoj.app.plugin.prov.doc.model.DatabasePrice;
 import org.ligoj.app.plugin.prov.doc.model.Image;
 import org.ligoj.app.plugin.prov.doc.model.Options;
-import org.ligoj.app.plugin.prov.doc.model.Size;
+import org.ligoj.app.plugin.prov.doc.model.Price;
 import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
 import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
 import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
@@ -233,7 +233,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
 			}
 			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""),
-					new TypeReference<List<DbaasSize>>() {
+					new TypeReference<List<DatabasePrice>>() {
 					});
 
 			// For each price/region/engine
@@ -426,7 +426,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new instance type as needed.
 	 */
-	private ProvInstanceType installInstanceType(final UpdateContext context, final String code, final Size aType) {
+	private ProvInstanceType installInstanceType(final UpdateContext context, final String code, final Price aType) {
 		final var type = context.getInstanceTypes().computeIfAbsent(code, c -> {
 			// New instance type (not update mode)
 			final var newType = new ProvInstanceType();
@@ -480,7 +480,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Install a new database type as needed.
 	 */
 	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code,
-			final DbaasSize aType) {
+			final DatabasePrice aType) {
 		final var type = context.getDatabaseTypes().computeIfAbsent(code, c -> {
 			final var newType = new ProvDatabaseType();
 			newType.setNode(context.getNode());

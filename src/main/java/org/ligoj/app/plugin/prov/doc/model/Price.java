@@ -1,3 +1,6 @@
+/*
+ * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
+ */
 package org.ligoj.app.plugin.prov.doc.model;
 
 import org.ligoj.app.plugin.prov.doc.catalog.NamedBean;
@@ -10,10 +13,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Instance price holding instance type, monthly cost and hourly cost.
+ */
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Size extends NamedBean {
+public class Price extends NamedBean {
 
 	/**
 	 * SID
