@@ -220,13 +220,11 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
-			final var dbaasDbs = mapper
-					.readValue(
-							StringUtils.replace(StringUtils
-									.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
-									.replaceAll("![^,}]+", "\"\""), "!", ""),
-							new TypeReference<List<NamedBean>>() {
-							});
+			final var dbaasDbs = mapper.readValue(StringUtils.replace(
+					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
+							.replaceAll("![^,}]+", "\"\""),
+					"!", ""), new TypeReference<List<NamedBean>>() {
+					});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
@@ -450,6 +448,12 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			t.setDescription("{Disk: " + aType.getDisk() + ", Category: " + aType.getCategorie().getName() + "}");
 			t.setConstant(true);
 			t.setAutoScale(false);
+
+			// See https://www.digitalocean.com/docs/droplets/resources/choose-plan/
+			switch (aType.getCategorie().getName()) {
+			case "General Purpose" -> t.setProcessor("Intel Xeon Skylake");
+			case "CPU Intensive" -> t.setProcessor("Intel Xeon"); // Intel Skylake or Broadwell
+			}
 
 			// Rating
 			t.setCpuRate(Rate.MEDIUM);

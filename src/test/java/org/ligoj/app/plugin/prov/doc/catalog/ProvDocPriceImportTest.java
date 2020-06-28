@@ -178,12 +178,13 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
-				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(), "UTF-8"))));
+		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
+				.withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(),
+						"UTF-8"))));
 		httpServer.start();
 
-		Assertions.assertThrows(BusinessException.class, ()-> resource.install(false));
+		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
 	}
 
 	@Test
@@ -194,19 +195,20 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
-				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(), "UTF-8"))));
+		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
+				.withBody(IOUtils.toString(
+						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(),
+						"UTF-8"))));
 		httpServer.start();
 
-		Assertions.assertThrows(BusinessException.class, ()-> resource.install(false));
+		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
 	}
 
 	@Test
 	void isEnabledRegionDatabaseDisabled() {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("--"));
-		Assertions.assertFalse(resource.isEnabledRegionDatabase(context , "any"));
+		Assertions.assertFalse(resource.isEnabledRegionDatabase(context, "any"));
 	}
 
 	@Test
@@ -214,7 +216,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("sf1"));
 		context.setRegionsDatabase(Collections.singletonList("sf2"));
-		Assertions.assertFalse(resource.isEnabledRegionDatabase(context , "sf1"));
+		Assertions.assertFalse(resource.isEnabledRegionDatabase(context, "sf1"));
 	}
 
 	@Test
@@ -222,16 +224,14 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("sf1"));
 		context.setRegionsDatabase(Collections.singletonList("sf1"));
-		Assertions.assertTrue(resource.isEnabledRegionDatabase(context , "sf1"));
+		Assertions.assertTrue(resource.isEnabledRegionDatabase(context, "sf1"));
 	}
-
-	
 
 	@Test
 	void isEnabledRegionVolumeDisabled() {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("--"));
-		Assertions.assertFalse(resource.isEnabledRegionVolume(context , "any"));
+		Assertions.assertFalse(resource.isEnabledRegionVolume(context, "any"));
 	}
 
 	@Test
@@ -239,7 +239,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("sf1"));
 		context.setRegionsVolume(Collections.singletonList("sf2"));
-		Assertions.assertFalse(resource.isEnabledRegionVolume(context , "sf1"));
+		Assertions.assertFalse(resource.isEnabledRegionVolume(context, "sf1"));
 	}
 
 	@Test
@@ -247,7 +247,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var context = new UpdateContext();
 		context.setValidRegion(Pattern.compile("sf1"));
 		context.setRegionsVolume(Collections.singletonList("sf1"));
-		Assertions.assertTrue(resource.isEnabledRegionVolume(context , "sf1"));
+		Assertions.assertTrue(resource.isEnabledRegionVolume(context, "sf1"));
 	}
 
 	@Test
@@ -272,6 +272,19 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals("nyc1", lookup.getPrice().getLocation().getName());
 		Assertions.assertEquals("New York 1", lookup.getPrice().getLocation().getDescription());
 		checkImportStatus();
+
+		// Check physical CPU
+		// CPU Intensive
+		lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
+				builder().cpu(2).ram(4096).constant(true).build());
+		Assertions.assertEquals("nyc1/monthly/centos/c-2-4GiB", lookup.getPrice().getCode());
+		Assertions.assertEquals("Intel Xeon", lookup.getPrice().getType().getProcessor());
+
+		// General Purpose
+		lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
+				builder().cpu(2).ram(8000).constant(true).build());
+		Assertions.assertEquals("nyc1/monthly/centos/g-2vcpu-8gb", lookup.getPrice().getCode());
+		Assertions.assertEquals("Intel Xeon Skylake", lookup.getPrice().getType().getProcessor());
 
 		// Install again to check the update without change
 		resetImportTask();
@@ -378,6 +391,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals("s-1vcpu-1gb", price.getType().getCode());
 		Assertions.assertEquals("s-1vcpu-1gb", price.getType().getName());
 		Assertions.assertEquals("{Disk: 25, Category: Standard}", price.getType().getDescription());
+		Assertions.assertNull(price.getType().getProcessor());
 		Assertions.assertFalse(price.getType().isAutoScale());
 		return instance;
 	}
@@ -420,11 +434,8 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		configuration.put(DocPriceImport.CONF_ENGINE, "(MYSQL)");
 		configuration.put(DocPriceImport.CONF_OS, "(WINDOWS|LINUX|CENTOS)");
 
-		// Check the reserved
 		final var quote = installAndConfigure();
 		Assertions.assertTrue(quote.getCost().getMin() >= 15);
-
-		// Check the spot
 		final var lookup = qiResource.lookup(subscription,
 				builder().cpu(8).ram(26000).constant(true).type("m6-32vcpu-256gb").usage("36month").build());
 
