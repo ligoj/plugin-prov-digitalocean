@@ -25,7 +25,3 @@ Go there: [DigitalOcean API page](https://cloud.digitalocean.com/account/api)
 - Unselect the `Write` option if your not willing to use `Terraform`
 - Validate the form by clicking on `Generate Token`
 - Copy the on-screen generated access token.
-
-# Technical details
-Used API is "Microsoft.Compute" (2017-03-30)
-Authentication is OAuth2, no required CLI to be installed
