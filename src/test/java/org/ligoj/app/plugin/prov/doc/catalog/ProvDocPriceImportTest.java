@@ -326,7 +326,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(6, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
 		Assertions.assertEquals(DEFAULT_USER, status.getAuthor());
-		Assertions.assertTrue(status.getNbInstancePrices().intValue() >= 498);
+		Assertions.assertTrue(status.getNbInstancePrices().intValue() >= 372);
 		Assertions.assertTrue(status.getNbInstanceTypes().intValue() >= 12);
 		Assertions.assertTrue(status.getNbLocations() >= 1);
 		Assertions.assertTrue(status.getNbStorageTypes().intValue() >= 3);

@@ -19,6 +19,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
+import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
 import org.ligoj.app.plugin.prov.doc.model.DatabasePrice;
 import org.ligoj.app.plugin.prov.doc.model.Image;
@@ -286,6 +287,12 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 */
 	protected boolean isEnabledRegionDatabase(final UpdateContext context, final String region) {
 		return isEnabledRegion(context, region) && context.getRegionsDatabase().contains(region);
+	}
+
+	@Override
+	protected boolean isEnabledEngine(final AbstractUpdateContext context, final String engine) {
+		// REDIS is not really an SGBD
+		return super.isEnabledEngine(context, engine) && !engine.equalsIgnoreCase("REDIS");
 	}
 
 	/**
