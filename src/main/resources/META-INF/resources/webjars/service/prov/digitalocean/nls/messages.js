@@ -3,7 +3,7 @@
  */
 define({
 	"root" : {
-		"service:prov:digitalocean:access-key" : "Application Key",
+		"service:prov:digitalocean:access-token" : "Personal access token",
 		"service:prov:digitalocean:name" : "Name",
 		"error" : {
 			"digitalocean-login" : "Authentication failed",
