@@ -3,6 +3,7 @@
  */
 package org.ligoj.app.plugin.prov.doc.model;
 
+import java.io.Serializable;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -17,7 +18,12 @@ import lombok.Setter;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Image {
+public class Image implements Serializable {
+
+	/**
+	 * Default SID
+	 */
+	private static final long serialVersionUID = 1L;
 
 	@JsonProperty("region_ids")
 	private List<Integer> regionIds;

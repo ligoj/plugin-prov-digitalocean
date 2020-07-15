@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Deprecated
+
 public class NamedBean extends org.ligoj.bootstrap.core.NamedBean<Integer> {
 
 	/**
