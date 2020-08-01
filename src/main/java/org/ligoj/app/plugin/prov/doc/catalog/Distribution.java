@@ -1,12 +1,10 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.doc.model;
+package org.ligoj.app.plugin.prov.doc.catalog;
 
 import java.util.Collections;
 import java.util.List;
-
-import org.ligoj.app.plugin.prov.doc.catalog.NamedBean;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

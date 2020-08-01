@@ -1,9 +1,8 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.doc.model;
+package org.ligoj.app.plugin.prov.doc.catalog;
 
-import org.ligoj.app.plugin.prov.doc.catalog.NamedBean;
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
