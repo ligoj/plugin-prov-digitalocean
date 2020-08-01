@@ -237,29 +237,27 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 			// For each price/region/engine
 			// Install term, type and price
-			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e)).forEach(engine -> {
-				dbaasSizes.stream().forEach(s -> {
-					final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
-					if (isEnabledDatabase(context, codeType)) {
-						var type = installDatabaseType(context, codeType, s);
-						context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
-								.forEach(region -> {
-									// Install monthly based price
-									var partialCode = codeType + "/" + engine;
-									installDatabasePrice(context, monthlyTerm,
-											monthlyTerm.getCode() + "/" + partialCode, type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
+			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
+					.forEach(engine -> dbaasSizes.stream().forEach(s -> {
+						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
+						if (isEnabledDatabase(context, codeType)) {
+							var type = installDatabaseType(context, codeType, s);
+							context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
+									.forEach(region -> {
+										// Install monthly based price
+										var partialCode = codeType + "/" + engine;
+										installDatabasePrice(context, monthlyTerm,
+												monthlyTerm.getCode() + "/" + partialCode, type,
+												s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
 
-									// Install hourly based price
-									installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode,
-											type,
-											s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(),
-											engine, null, false, region);
-
-								});
-					}
-				});
-			});
+										// Install hourly based price
+										installDatabasePrice(context, hourlyTerm,
+												hourlyTerm.getCode() + "-" + partialCode, type,
+												s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(),
+												engine, null, false, region);
+									});
+						}
+					}));
 		}
 
 		// Install storage
@@ -268,12 +266,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Support
 		// Install type and price
 		nextStep(node, "install-support");
-		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> {
-			installSupportType(context, t.getCode(), t);
-		});
-		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> {
-			installSupportPrice(context, t.getCode(), t);
-		});
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv")
+				.forEach(t -> installSupportType(context, t.getCode(), t));
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv")
+				.forEach(t -> installSupportPrice(context, t.getCode(), t));
 	}
 
 	/**
@@ -357,7 +353,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * For a given image return Union of region_ids
 	 */
 	private Set<Integer> getRegionsUnion(final List<Image> images) {
-		return images.stream().map(image -> image.getRegionIds()).flatMap(List::stream).collect(Collectors.toSet());
+		return images.stream().map(Image::getRegionIds).flatMap(List::stream).collect(Collectors.toSet());
 	}
 
 	/**
@@ -453,6 +449,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			switch (aType.getCategorie().getName()) {
 			case "General Purpose" -> t.setProcessor("Intel Xeon Skylake");
 			case "CPU Intensive" -> t.setProcessor("Intel Xeon"); // Intel Skylake or Broadwell
+			default -> t.setProcessor(null);
 			}
 
 			// Rating

@@ -145,9 +145,10 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 	@Test
 	void checkStatusAuthorityError() {
 		configuration.put(ProvDocPluginResource.CONF_API_URL, "http://localhost:" + MOCK_PORT);
-		MatcherUtil.assertThrows(Assertions.assertThrows(ValidationJsonException.class, () -> {
-			resource.checkStatus(subscriptionResource.getParametersNoCheck(subscription));
-		}), ProvDocPluginResource.PARAMETER_TOKEN, "digitalocean-login");
+		var param = subscriptionResource.getParametersNoCheck(subscription);
+		MatcherUtil.assertThrows(
+				Assertions.assertThrows(ValidationJsonException.class, () -> resource.checkStatus(param)),
+				ProvDocPluginResource.PARAMETER_TOKEN, "digitalocean-login");
 	}
 
 	@Test
