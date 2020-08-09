@@ -328,8 +328,8 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		var lookupB = qbResource.lookup(subscription, QuoteDatabaseQuery.builder().cpu(1).engine("MYSQL").build());
 		Assertions.assertNull(lookupB.getPrice().getEdition());
 		Assertions.assertEquals("nyc1/monthly/db-1-1/MySQL", lookupB.getPrice().getCode());
-		Assertions.assertEquals(1024, lookupB.getPrice().getType().getRam().intValue());
-		Assertions.assertEquals(1, lookupB.getPrice().getType().getCpu().intValue());
+		Assertions.assertEquals(1024, lookupB.getPrice().getType().getRam());
+		Assertions.assertEquals(1, lookupB.getPrice().getType().getCpu());
 		Assertions.assertNull(lookupB.getPrice().getStorageEngine());
 	}
 

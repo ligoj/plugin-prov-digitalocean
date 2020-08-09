@@ -37,6 +37,7 @@ import org.ligoj.app.plugin.prov.model.ProvTenancy;
 import org.ligoj.app.plugin.prov.model.Rate;
 import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.INamableBean;
+import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
@@ -70,7 +71,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Default pricing URL.
 	 */
-	protected static final String DEFAULT_API_PRICES = "https://ligoj.io/plugins/plugin-prov-digitalocean";
+	protected static final String DEFAULT_API_PRICES = "https://digitalocean.ligoj.io";
 
 	/**
 	 * Name space for local configuration files
@@ -96,12 +97,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Configuration key used for enabled OS pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_OS = ProvDocPluginResource.KEY + ":os";
-
-	/**
-	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
-	 * restriction.
-	 */
-	public static final String CONF_ETYPE = ProvDocPluginResource.KEY + ":database-engine";
 
 	/**
 	 * Price Multiplier as default for stand-alone server. This value is different for read-only node (not yet
@@ -132,7 +127,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		nextStep(node, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidDatabaseType(Pattern.compile(configuration.get(CONF_DTYPE, ".*"), Pattern.CASE_INSENSITIVE));
-		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ETYPE, ".*"), Pattern.CASE_INSENSITIVE));
+		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ENGINE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
 		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
@@ -219,7 +214,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			final var dbaasDbs = mapper.readValue(StringUtils.replace(
 					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
 							.replaceAll("![^,}]+", "\"\""),
-					"!", ""), new TypeReference<List<NamedBean>>() {
+					"!", ""), new TypeReference<List<NamedBean<Integer>>>() {
 					});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
@@ -477,7 +472,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			t.setConvertibleLocation(false);
 			t.setConvertibleOs(false);
 			t.setEphemeral(false);
-		}, iptRepository);
+		});
 	}
 
 	/**
@@ -618,6 +613,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			r.setLatitude(regionStats.getLatitude());
 			r.setLongitude(regionStats.getLongitude());
 			r.setDescription(name);
-		}, locationRepository);
+		});
 	}
 }

@@ -6,6 +6,8 @@ package org.ligoj.app.plugin.prov.doc.catalog;
 import java.util.Collections;
 import java.util.List;
 
+import org.ligoj.bootstrap.core.NamedBean;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import lombok.Getter;
@@ -18,7 +20,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Distribution extends NamedBean {
+public class Distribution extends NamedBean<Integer> {
 
 	/**
 	 * Default SID

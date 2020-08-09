@@ -74,7 +74,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 						Subscription.class, ProvLocation.class, ProvQuote.class, Parameter.class,
 						ParameterValue.class },
 				StandardCharsets.UTF_8.name());
-		configuration.put("service:prov:digitalocenan:api", "http://localhost:" + MOCK_PORT + "/");
+		configuration.put("service:prov:digitalocean:api", "http://localhost:" + MOCK_PORT + "/");
 		this.subscription = getSubscription("gStack");
 
 		// Invalidate digitalocean cache

@@ -4,6 +4,7 @@
 package org.ligoj.app.plugin.prov.doc.catalog;
 
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
+import org.ligoj.bootstrap.core.NamedBean;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -18,7 +19,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Price extends NamedBean {
+public class Price extends NamedBean<Integer> {
 
 	/**
 	 * SID
@@ -36,7 +37,7 @@ public class Price extends NamedBean {
 	@JsonProperty("memory_in_bytes")
 	private double memoryInBytes;
 	@JsonProperty("size_category")
-	private NamedBean categorie;
+	private NamedBean<Integer> categorie;
 
 	/**
 	 * Resolved instance type entity.
