@@ -178,7 +178,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
+		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(),
 						"UTF-8"))));
@@ -195,7 +195,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
+		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(),
 						"UTF-8"))));
@@ -347,20 +347,20 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 	private void mockServer() throws IOException {
 		configuration.put(DocPriceImport.CONF_API_PRICES, "http://localhost:" + MOCK_PORT);
-		httpServer.stubFor(get(urlEqualTo("/options_for_create.json")).willReturn(aResponse()
+		httpServer.stubFor(get(urlEqualTo("/prices/options_for_create.json")).willReturn(aResponse()
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/v2/options_for_create.json")).willReturn(aResponse()
+		httpServer.stubFor(get(urlEqualTo("/v2/prices/options_for_create.json")).willReturn(aResponse()
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/v2/options_for_create.json").getInputStream(),
 						"UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/aurora.js"))
+		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/aurora.js").getInputStream(), "UTF-8"))));
-		httpServer.stubFor(get(urlEqualTo("/v2/aurora.js"))
+		httpServer.stubFor(get(urlEqualTo("/v2/prices/aurora.js"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/v2/aurora.js").getInputStream(), "UTF-8"))));
 		httpServer.start();

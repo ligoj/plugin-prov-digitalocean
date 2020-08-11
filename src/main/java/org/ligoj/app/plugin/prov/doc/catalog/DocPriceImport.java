@@ -105,7 +105,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	private static final double PRICE_MULTIPLIER = 3d;
 
 	private String getPricesApi() {
-		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES);
+		return configuration.get(CONF_API_PRICES, DEFAULT_API_PRICES) + "/prices";
 	}
 
 	@Override
@@ -211,11 +211,13 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
-			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
-							.replaceAll("![^,}]+", "\"\""),
-					"!", ""), new TypeReference<List<NamedBean<Integer>>>() {
-					});
+			final var dbaasDbs = mapper
+					.readValue(
+							StringUtils.replace(StringUtils
+									.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
+									.replaceAll("![^,}]+", "\"\""), "!", ""),
+							new TypeReference<List<NamedBean<Integer>>>() {
+							});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
@@ -569,7 +571,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		type.setAccessPhone(aType.getAccessPhone());
 		type.setSlaStartTime(aType.getSlaStartTime());
 		type.setSlaEndTime(aType.getSlaEndTime());
-		type.setDescription(aType.getDescription());
 
 		type.setSlaBusinessCriticalSystemDown(aType.getSlaBusinessCriticalSystemDown());
 		type.setSlaGeneralGuidance(aType.getSlaGeneralGuidance());
