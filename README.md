@@ -1,4 +1,4 @@
-# :link: Ligoj DigitalOcean plugin [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean) [![Download](https://api.bintray.com/packages/ligoj/maven-repo/plugin-prov-digitalocean/images/download.svg) ](https://bintray.com/ligoj/maven-repo/plugin-prov-digitalocean/_latestVersion)
+# :link: Ligoj DigitalOcean plugin [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean)
 
 [![Build Status](https://travis-ci.org/ligoj/plugin-prov-digitalocean.svg?branch=master)](https://travis-ci.org/ligoj/plugin-prov-digitalocean)
 [![Build Status](https://circleci.com/gh/ligoj/plugin-prov-digitalocean.svg?style=svg)](https://circleci.com/gh/ligoj/plugin-prov-digitalocean)
