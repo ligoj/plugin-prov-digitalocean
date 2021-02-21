@@ -233,7 +233,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
 					.forEach(engine -> dbaasSizes.stream().forEach(s -> {
 						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
-						if (isEnabledDatabase(context, codeType)) {
+						if (isEnabledDatabaseType(context, codeType)) {
 							var type = installDatabaseType(context, codeType, s);
 							context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
 									.forEach(region -> {
