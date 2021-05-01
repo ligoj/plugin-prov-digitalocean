@@ -21,14 +21,14 @@ public class UpdateContext extends AbstractUpdateContext {
 
 	/**
 	 * Database enabled regions.
-	 * 
+	 *
 	 * @see <a href="https://www.digitalocean.com/docs/platform/availability-matrix/">DB availability</a>
 	 */
 	private List<String> regionsDatabase;
-	
+
 	/**
 	 * Volume enabled regions.
-	 * 
+	 *
 	 * @see <a href="https://www.digitalocean.com/docs/platform/availability-matrix/">DB availability</a>
 	 */
 	private List<String> regionsVolume;

@@ -88,7 +88,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 
 	@Test
 	void install() throws IOException {
-		final ProvDocPluginResource resource2 = new ProvDocPluginResource();
+		final var resource2 = new ProvDocPluginResource();
 		resource2.priceImport = Mockito.mock(DocPriceImport.class);
 		resource2.install();
 	}

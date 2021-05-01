@@ -51,7 +51,7 @@ import lombok.Setter;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
- * 
+ *
  * @see <a href="https://www.digitalocean.com/pricing/">pricing</a>
  */
 @Component
@@ -120,7 +120,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @throws IOException When CSV or XML files cannot be read.
 	 */
 	public void install(final boolean force) throws IOException {
-		final UpdateContext context = initContext(new UpdateContext(), ProvDocPluginResource.KEY, force);
+		final var context = initContext(new UpdateContext(), ProvDocPluginResource.KEY, force);
 		final var node = context.getNode();
 
 		// Get previous data
@@ -267,7 +267,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 	/**
 	 * Check a database is available within the given region.
-	 * 
+	 *
 	 * @param context The update context.
 	 * @param region  The region code to test.
 	 * @return <code>true</code> when the region is available and enabled for the database service.
@@ -284,7 +284,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 	/**
 	 * Check a volume is available within the given region.
-	 * 
+	 *
 	 * @param context The update context.
 	 * @param region  The region code to test.
 	 * @return <code>true</code> when the region is available and enabled for the volume service.
@@ -492,8 +492,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Merge as needed
 		return copyAsNeeded(context, type, t -> {
 			t.setName("DB " + aType.getCpu() + "vCPU " + aType.getMemory() + "GiB");
-			t.setCpu((double) aType.getCpu());
-			t.setRam((int) aType.getMemory() * 1024); // Convert in MiB
+			t.setCpu(aType.getCpu());
+			t.setRam(aType.getMemory() * 1024); // Convert in MiB
 			t.setConstant(true);
 			t.setAutoScale(false);
 
@@ -535,7 +535,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	public void installSupportPrice(final UpdateContext context, final String code, final ProvSupportPrice aPrice) {
 		final var price = context.getPreviousSupport().computeIfAbsent(code, c -> {
 			// New instance price
-			final ProvSupportPrice newPrice = new ProvSupportPrice();
+			final var newPrice = new ProvSupportPrice();
 			newPrice.setCode(c);
 			return newPrice;
 		});

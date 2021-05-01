@@ -17,8 +17,8 @@ import lombok.Setter;
 @Getter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Region extends AbstractNamedEntity<Integer> {
-		
-	 /**
+
+	/**
 	 * SID
 	 */
 	private static final long serialVersionUID = 1L;
