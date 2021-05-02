@@ -124,7 +124,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		final var node = context.getNode();
 
 		// Get previous data
-		nextStep(node, "initialize");
+		nextStep(context, "initialize");
 		context.setValidOs(Pattern.compile(configuration.get(CONF_OS, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidDatabaseType(Pattern.compile(configuration.get(CONF_DTYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ENGINE, ".*"), Pattern.CASE_INSENSITIVE));
@@ -159,7 +159,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 						}));
 
 		// Fetch the remote prices stream and build the prices object
-		nextStep(node, "retrieve-catalog");
+		nextStep(context, "retrieve-catalog");
 		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
 				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
 
@@ -174,7 +174,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 			// For each price/region/OS/software
 			// Install term, type and price
-			nextStep(node, "install-vm");
+			nextStep(context, "install-vm");
 			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
 					.collect(Collectors.toList()));
 			options.getRegions()
@@ -197,7 +197,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		}
 
 		// Database
-		nextStep(node, "install-database");
+		nextStep(context, "install-database");
 		context.setPreviousDatabase(dpRepository.findAllBy("term.node", node).stream()
 				.collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
 		try (var curl = new CurlProcessor()) {
@@ -258,7 +258,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Support
 		// Install type and price
-		nextStep(node, "install-support");
+		nextStep(context, "install-support");
 		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv")
 				.forEach(t -> installSupportType(context, t.getCode(), t));
 		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv")
@@ -297,8 +297,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * Install the storage types and prices.
 	 */
 	private void installStorage(final UpdateContext context) {
-		final var node = context.getNode();
-		nextStep(node, "install-vm-storage");
+		nextStep(context, "install-vm-storage");
 
 		// Block storage
 		// See https://www.digitalocean.com/docs/volumes/
