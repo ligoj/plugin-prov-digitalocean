@@ -130,7 +130,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setValidDatabaseEngine(Pattern.compile(configuration.get(CONF_ENGINE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
-		context.getMapRegionToName().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
+		context.getMapRegionById().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
 		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
 				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
 		context.setDatabaseTypes(dtRepository.findAllBy(BY_NODE, node).stream()
@@ -603,7 +603,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Update the location details as needed
 		return copyAsNeeded(context, entity, r -> {
-			final var regionStats = context.getMapRegionToName().getOrDefault(region, new ProvLocation());
+			final var regionStats = context.getMapRegionById().getOrDefault(region, new ProvLocation());
 			r.setContinentM49(regionStats.getContinentM49());
 			r.setCountryM49(regionStats.getCountryM49());
 			r.setCountryA2(regionStats.getCountryA2());

@@ -1,6 +1,6 @@
 # :link: Ligoj DigitalOcean plugin [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.ligoj.plugin/plugin-prov-digitalocean)
 
-[![Build Status](https://travis-ci.org/ligoj/plugin-prov-digitalocean.svg?branch=master)](https://travis-ci.org/ligoj/plugin-prov-digitalocean)
+[![Build Status](https://travis-ci.com/ligoj/plugin-prov-digitalocean.svg?branch=master)](https://travis-ci.com/ligoj/plugin-prov-digitalocean)
 [![Build Status](https://circleci.com/gh/ligoj/plugin-prov-digitalocean.svg?style=svg)](https://circleci.com/gh/ligoj/plugin-prov-digitalocean)
 [![Build Status](https://ci.appveyor.com/api/projects/status/unnurptgv79mqjxg?svg=true)](https://ci.appveyor.com/project/ligoj/plugin-prov-digitalocean/branch/master)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=org.ligoj.plugin%3Aplugin-prov-digitalocean&metric=coverage)](https://sonarcloud.io/dashboard?id=org.ligoj.plugin%3Aplugin-prov-digitalocean)
