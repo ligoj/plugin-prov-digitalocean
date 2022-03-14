@@ -140,4 +140,9 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 	public VmOs getCatalogOs(final VmOs os) {
 		return os.toPricingOs() == VmOs.LINUX ? VmOs.CENTOS : super.getCatalogOs(os);
 	}
+
+	@Override
+	public String getName() {
+		return "Digital Ocean";
+	}
 }

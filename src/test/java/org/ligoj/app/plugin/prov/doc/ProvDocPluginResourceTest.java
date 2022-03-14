@@ -87,6 +87,11 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
+	void getName() {
+		Assertions.assertEquals("Digital Ocean", resource.getName());
+	}
+
+	@Test
 	void install() throws IOException {
 		final var resource2 = new ProvDocPluginResource();
 		resource2.priceImport = Mockito.mock(DocPriceImport.class);
