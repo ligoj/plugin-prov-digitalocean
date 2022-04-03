@@ -176,11 +176,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			// Install term, type and price
 			nextStep(context, "install-vm");
 			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
-					.collect(Collectors.toList()));
+					.toList());
 			options.getRegions()
 					.forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
-			options.setSizes(options.getSizes().stream().filter(s -> isEnabledType(context, s.getName()))
-					.collect(Collectors.toList()));
+			options.setSizes(options.getSizes().stream().filter(s -> isEnabledType(context, s.getName())).toList());
 			options.getSizes().forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
 			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName()))).forEach(d -> {
 				final var os = getOs(d.getName());
