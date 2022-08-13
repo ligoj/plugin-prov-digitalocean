@@ -433,7 +433,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			t.setCpu(aType.getCpu());
 			t.setRam((int) Math.ceil(aType.getMemoryInBytes() / 1024 / 1024)); // Convert in MiB
 			t.setDescription("{Disk: " + aType.getDisk() + ", Category: " + aType.getCategorie().getName() + "}");
-			t.setConstant(true);
 			t.setAutoScale(false);
 
 			// See https://www.digitalocean.com/docs/droplets/resources/choose-plan/
@@ -492,7 +491,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			t.setName("DB " + aType.getCpu() + "vCPU " + aType.getMemory() + "GiB");
 			t.setCpu(aType.getCpu());
 			t.setRam(aType.getMemory() * 1024); // Convert in MiB
-			t.setConstant(true);
 			t.setAutoScale(false);
 
 			// Rating

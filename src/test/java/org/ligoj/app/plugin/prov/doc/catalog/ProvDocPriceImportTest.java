@@ -260,7 +260,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 		// Check the 3 years term
 		var lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
-				builder().cpu(7).ram(1741).constant(true).usage("36month").build());
+				builder().cpu(7).ram(1741).usage("36month").build());
 		Assertions.assertEquals(2240d, lookup.getCost(), DELTA);
 		Assertions.assertEquals(2240d, lookup.getPrice().getCost(), DELTA);
 		Assertions.assertEquals(2240d, lookup.getPrice().getCostPeriod(), DELTA);
@@ -276,13 +276,13 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		// Check physical CPU
 		// CPU Intensive
 		lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
-				builder().cpu(2).ram(4096).constant(true).build());
+				builder().cpu(2).ram(4096).build());
 		Assertions.assertEquals("nyc1/monthly/centos/c-2-4GiB", lookup.getPrice().getCode());
 		Assertions.assertEquals("Intel Xeon", lookup.getPrice().getType().getProcessor());
 
 		// General Purpose
 		lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
-				builder().cpu(2).ram(8000).constant(true).build());
+				builder().cpu(2).ram(8000).build());
 		Assertions.assertEquals("nyc1/monthly/centos/g-2vcpu-8gb", lookup.getPrice().getCode());
 		Assertions.assertEquals("Intel Xeon Skylake", lookup.getPrice().getType().getProcessor());
 
@@ -437,7 +437,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		final var quote = installAndConfigure();
 		Assertions.assertTrue(quote.getCost().getMin() >= 15);
 		final var lookup = qiResource.lookup(subscription,
-				builder().cpu(8).ram(26000).constant(true).type("m6-32vcpu-256gb").usage("36month").build());
+				builder().cpu(8).ram(26000).type("m6-32vcpu-256gb").usage("36month").build());
 
 		Assertions.assertTrue(lookup.getCost() > 900d);
 		final var instance2 = lookup.getPrice();
@@ -457,12 +457,12 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 
 		// Request an instance for a specific OS
 		var lookup = qiResource.lookup(subscription,
-				builder().cpu(8).ram(256000).constant(true).os(VmOs.CENTOS).location("sfo2").usage("36month").build());
+				builder().cpu(8).ram(256000).os(VmOs.CENTOS).location("sfo2").usage("36month").build());
 		Assertions.assertEquals("sfo2/monthly/centos/m6-32vcpu-256gb", lookup.getPrice().getCode());
 
 		// Request an instance for a generic Linux OS
 		lookup = qiResource.lookup(subscription,
-				builder().constant(true).type("s-1vcpu-1gb").os(VmOs.LINUX).location("sfo2").usage("36month").build());
+				builder().type("s-1vcpu-1gb").os(VmOs.LINUX).location("sfo2").usage("36month").build());
 		Assertions.assertEquals("sfo2/monthly/centos/s-1vcpu-1gb", lookup.getPrice().getCode());
 		Assertions.assertFalse(lookup.getPrice().getType().isAutoScale());
 
