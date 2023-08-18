@@ -6,9 +6,9 @@ package org.ligoj.app.plugin.prov.doc;
 import java.io.IOException;
 import java.util.Map;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
@@ -55,7 +55,7 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 	protected static final String CONF_API_URL = PLUGIN_KEY + ":api";
 
 	/**
-	 * A valid API key. Would be used to retrieve a access token.
+	 * A valid API key. Would be used to retrieve an access token.
 	 */
 	public static final String PARAMETER_TOKEN = PLUGIN_KEY + ":access-token";
 

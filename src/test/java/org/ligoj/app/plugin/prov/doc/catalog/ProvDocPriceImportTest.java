@@ -14,12 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.regex.Pattern;
 
-import javax.annotation.PostConstruct;
-import javax.transaction.Transactional;
+import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,8 +108,8 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Parameter.class, ProvLocation.class, Subscription.class, ParameterValue.class,
 						ProvQuote.class },
-				StandardCharsets.UTF_8.name());
-		this.subscription = getSubscription("gStack");
+				StandardCharsets.UTF_8);
+		this.subscription = getSubscription("Jupiter");
 
 		// Mock catalog import helper
 		final var helper = new ImportCatalogResource();
@@ -176,11 +176,11 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/aurora-ko-sizes.js").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.start();
 
 		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
@@ -193,11 +193,11 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js")).willReturn(aResponse().withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/aurora-ko-prices.js").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.start();
 
 		Assertions.assertThrows(BusinessException.class, () -> resource.install(false));
@@ -338,8 +338,8 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(6, status.getWorkload());
 		Assertions.assertEquals("install-support", status.getPhase());
 		Assertions.assertEquals(DEFAULT_USER, status.getAuthor());
-		Assertions.assertTrue(status.getNbPrices().intValue() >= 372);
-		Assertions.assertTrue(status.getNbTypes().intValue() >= 12);
+		Assertions.assertTrue(status.getNbPrices() >= 372);
+		Assertions.assertTrue(status.getNbTypes() >= 12);
 		Assertions.assertTrue(status.getNbLocations() >= 1);
 	}
 
@@ -349,18 +349,18 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/options_for_create.json").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.stubFor(get(urlEqualTo("/v2/prices/options_for_create.json")).willReturn(aResponse()
 				.withStatus(HttpStatus.SC_OK)
 				.withBody(IOUtils.toString(
 						new ClassPathResource("mock-server/digitalocean/v2/options_for_create.json").getInputStream(),
-						"UTF-8"))));
+						StandardCharsets.UTF_8))));
 		httpServer.stubFor(get(urlEqualTo("/prices/aurora.js"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/aurora.js").getInputStream(), "UTF-8"))));
+						new ClassPathResource("mock-server/digitalocean/aurora.js").getInputStream(), StandardCharsets.UTF_8))));
 		httpServer.stubFor(get(urlEqualTo("/v2/prices/aurora.js"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/v2/aurora.js").getInputStream(), "UTF-8"))));
+						new ClassPathResource("mock-server/digitalocean/v2/aurora.js").getInputStream(), StandardCharsets.UTF_8))));
 		httpServer.start();
 	}
 
@@ -447,7 +447,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	/**
 	 * Install and check
 	 */
-	private QuoteVo installAndConfigure() throws IOException, Exception {
+	private QuoteVo installAndConfigure() throws Exception {
 		resource.install(false);
 		em.flush();
 		em.clear();
@@ -490,7 +490,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				QuoteStorageQuery.builder().size(5).location("sfo1").optimized(ProvStorageOptimized.IOPS).build())
 				.size());
 
-		// Lookup STANDARD SSD storage within the same region than the attached server
+		// Lookup STANDARD SSD storage within the same region as the attached server
 		// ---------------------------------
 		var sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW)
 				.location("sfo2").instance(createInstance.getId()).build()).get(0);

@@ -11,10 +11,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpStatus;
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,9 +73,9 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Subscription.class, ProvLocation.class, ProvQuote.class, Parameter.class,
 						ParameterValue.class },
-				StandardCharsets.UTF_8.name());
+				StandardCharsets.UTF_8);
 		configuration.put("service:prov:digitalocean:api", "http://localhost:" + MOCK_PORT + "/");
-		this.subscription = getSubscription("gStack");
+		this.subscription = getSubscription("Jupiter");
 
 		// Invalidate digitalocean cache
 		cacheManager.getCache("curl-tokens").clear();
@@ -112,9 +112,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 		initSpringSecurityContext("any");
 
 		// Re-Install a new configuration
-		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> {
-			resource.updateCatalog("service:prov:digitalocean:test", false);
-		}).getMessage());
+		Assertions.assertEquals("read-only-node", Assertions.assertThrows(BusinessException.class, () -> resource.updateCatalog("service:prov:digitalocean:test", false)).getMessage());
 	}
 
 	@Test
@@ -134,7 +132,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 		configuration.put(ProvDocPluginResource.CONF_API_URL, "http://localhost:" + MOCK_PORT);
 		httpServer.stubFor(get(urlEqualTo("/projects"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody(IOUtils.toString(
-						new ClassPathResource("mock-server/digitalocean/projects.json").getInputStream(), "UTF-8"))));
+						new ClassPathResource("mock-server/digitalocean/projects.json").getInputStream(), StandardCharsets.UTF_8))));
 		httpServer.start();
 	}
 
