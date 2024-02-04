@@ -3,39 +3,17 @@
  */
 package org.ligoj.app.plugin.prov.doc.catalog;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
-import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
-import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
-import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
-import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
-import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
-import org.ligoj.app.plugin.prov.model.ProvInstanceType;
-import org.ligoj.app.plugin.prov.model.ProvLocation;
-import org.ligoj.app.plugin.prov.model.ProvStorageOptimized;
-import org.ligoj.app.plugin.prov.model.ProvStoragePrice;
-import org.ligoj.app.plugin.prov.model.ProvStorageType;
-import org.ligoj.app.plugin.prov.model.ProvSupportPrice;
-import org.ligoj.app.plugin.prov.model.ProvSupportType;
-import org.ligoj.app.plugin.prov.model.ProvTenancy;
-import org.ligoj.app.plugin.prov.model.Rate;
-import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.app.plugin.prov.model.*;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
@@ -43,11 +21,13 @@ import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.Setter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
@@ -168,7 +148,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		var hourlyTerm = installPriceTerm(context, "hourly", 0);
 
 		try (var curl = new CurlProcessor()) {
-			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
+			final var rawJson = Objects.toString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
 			final var options = objectMapper.readValue(rawJson, Options.class);
 			final var regionIds = new HashMap<Integer, ProvLocation>();
 
@@ -203,8 +183,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			final var mapper = new ObjectMapper();
 
 			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-			final var rawJS = StringUtils.defaultString(curl.get(getPricesApi() + "/aurora.js"), "");
-			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
+			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
 			// Engine
 			if (!engineMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
@@ -218,7 +198,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 							new TypeReference<List<NamedBean<Integer>>>() {
 							});
 			// Instance price
-			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
@@ -230,7 +210,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			// For each price/region/engine
 			// Install term, type and price
 			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
-					.forEach(engine -> dbaasSizes.stream().forEach(s -> {
+					.forEach(engine -> dbaasSizes.forEach(s -> {
 						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
 						if (isEnabledDatabaseType(context, codeType)) {
 							var type = installDatabaseType(context, codeType, s);
@@ -360,7 +340,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		return copyAsNeeded(context, type, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(code /* human-readable name */);
 			t.setMinimal(1);
 			t.setIncrement(null);
 			t.setAvailability(99d);
@@ -463,7 +443,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Complete the specifications
 		return copyAsNeeded(context, term, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(code /* human-readable name */);
 			t.setPeriod(period);
 			t.setReservation(false);
 			t.setConvertibleFamily(false);
