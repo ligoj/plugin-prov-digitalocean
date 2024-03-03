@@ -14,7 +14,7 @@ Provides the following features :
 - Prices are indirectly read from DigitalOcean console.
 - Supported services : Compute, Storage and database
 
-# Susbcription parameters
+# Subscription parameters
 * Access Token
 
 ## How to create/get these DigitalOcean parameters?
