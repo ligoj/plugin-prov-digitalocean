@@ -20,6 +20,6 @@ Provides the following features :
 Go there: [DigitalOcean API page](https://cloud.digitalocean.com/account/api)
 - Click on `Generate New Token`
 - Type a token name like `ligoj`
-- Unselect the `Write` option if your not willing to use `Terraform`
+- Unselect the `Write` option if you are not willing to use `Terraform`
 - Validate the form by clicking on `Generate Token`
 - Copy the on-screen generated access token.
