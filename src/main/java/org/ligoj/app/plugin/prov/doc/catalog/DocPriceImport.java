@@ -88,8 +88,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 */
 	public static final String CONF_DTYPE = ProvDocPluginResource.KEY + ":database-type";
 	/**
-	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no
-	 * restriction.
+	 * Configuration key used for enabled database engine pattern names. When value is <code>null</code>, no restriction.
 	 */
 	public static final String CONF_ENGINE = ProvDocPluginResource.KEY + ":database-engine";
 
@@ -99,8 +98,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	public static final String CONF_OS = ProvDocPluginResource.KEY + ":os";
 
 	/**
-	 * Price Multiplier as default for stand-alone server. This value is different for read-only node (not yet
-	 * supported)
+	 * Price Multiplier as default for stand-alone server. This value is different for read-only node (not yet supported)
 	 */
 	private static final double PRICE_MULTIPLIER = 3d;
 
@@ -131,125 +129,104 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setValidInstanceType(Pattern.compile(configuration.get(CONF_ITYPE, ".*"), Pattern.CASE_INSENSITIVE));
 		context.setValidRegion(Pattern.compile(configuration.get(CONF_REGIONS, ".*")));
 		context.getMapRegionById().putAll(toMap("digitalocean/regions.json", MAP_LOCATION));
-		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
-		context.setDatabaseTypes(dtRepository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvDatabaseType::getCode, Function.identity())));
-		context.setPriceTerms(iptRepository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvInstancePriceTerm::getCode, Function.identity())));
-		context.setStorageTypes(stRepository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvStorageType::getCode, Function.identity())));
-		context.setPreviousStorage(spRepository.findAllBy("type.node", node).stream()
-				.collect(Collectors.toMap(ProvStoragePrice::getCode, Function.identity())));
-		context.setSupportTypes(st2Repository.findAllBy(BY_NODE, node).stream()
-				.collect(Collectors.toMap(ProvSupportType::getName, Function.identity())));
-		context.setPreviousSupport(sp2Repository.findAllBy("type.node", node).stream()
-				.collect(Collectors.toMap(ProvSupportPrice::getCode, Function.identity())));
-		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream()
-				.filter(r -> isEnabledRegion(context, r))
+		context.setInstanceTypes(itRepository.findAllBy(BY_NODE, node).stream().collect(Collectors.toMap(ProvInstanceType::getCode, Function.identity())));
+		context.setDatabaseTypes(dtRepository.findAllBy(BY_NODE, node).stream().collect(Collectors.toMap(ProvDatabaseType::getCode, Function.identity())));
+		context.setPriceTerms(iptRepository.findAllBy(BY_NODE, node).stream().collect(Collectors.toMap(ProvInstancePriceTerm::getCode, Function.identity())));
+		context.setStorageTypes(stRepository.findAllBy(BY_NODE, node).stream().collect(Collectors.toMap(ProvStorageType::getCode, Function.identity())));
+		context.setPreviousStorage(
+				spRepository.findAllBy("type.node", node).stream().collect(Collectors.toMap(ProvStoragePrice::getCode, Function.identity())));
+		context.setSupportTypes(st2Repository.findAllBy(BY_NODE, node).stream().collect(Collectors.toMap(ProvSupportType::getName, Function.identity())));
+		context.setPreviousSupport(
+				sp2Repository.findAllBy("type.node", node).stream().collect(Collectors.toMap(ProvSupportPrice::getCode, Function.identity())));
+		context.setRegions(locationRepository.findAllBy(BY_NODE, context.getNode()).stream().filter(r -> isEnabledRegion(context, r))
 				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
-		context.setRegionsDatabase(objectMapper.readValue(
-				IOUtils.toString(new ClassPathResource("digitalocean/regions-database.json").getInputStream(),
-						StandardCharsets.UTF_8),
-				new TypeReference<List<String>>() {
-				}));
-		context.setRegionsVolume(objectMapper
-				.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-volume.json").getInputStream(),
-						StandardCharsets.UTF_8), new TypeReference<List<String>>() {
+		context.setRegionsDatabase(
+				objectMapper.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-database.json").getInputStream(), StandardCharsets.UTF_8),
+						new TypeReference<List<String>>() {
+						}));
+		context.setRegionsVolume(
+				objectMapper.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-volume.json").getInputStream(), StandardCharsets.UTF_8),
+						new TypeReference<List<String>>() {
 						}));
 
 		// Fetch the remote prices stream and build the prices object
 		nextStep(context, "retrieve-catalog");
-		context.setPrevious(ipRepository.findAllBy("term.node", node).stream()
-				.collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
+		context.setPrevious(ipRepository.findAllBy("term.node", node).stream().collect(Collectors.toMap(ProvInstancePrice::getCode, Function.identity())));
 
 		// Instance(VM)
 		var monthlyTerm = installPriceTerm(context, "monthly", 1);
 		var hourlyTerm = installPriceTerm(context, "hourly", 0);
 
 		try (var curl = new CurlProcessor()) {
-			final var rawJson = StringUtils.defaultString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
+			final var rawJson = Objects.toString(curl.get(getPricesApi() + "/options_for_create.json"), "{}");
 			final var options = objectMapper.readValue(rawJson, Options.class);
 			final var regionIds = new HashMap<Integer, ProvLocation>();
 
 			// For each price/region/OS/software
 			// Install term, type and price
 			nextStep(context, "install-vm");
-			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug()))
-					.toList());
-			options.getRegions()
-					.forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
+			options.setRegions(options.getRegions().stream().filter(r -> isEnabledRegion(context, r.getSlug())).toList());
+			options.getRegions().forEach(r -> regionIds.put(r.getId(), installRegion(context, r.getSlug(), r.getName())));
 			options.setSizes(options.getSizes().stream().filter(s -> isEnabledType(context, s.getName())).toList());
 			options.getSizes().forEach(s -> s.setType(installInstanceType(context, s.getName(), s)));
 			options.getDistributions().stream().filter(d -> isEnabledOs(context, getOs(d.getName()))).forEach(d -> {
 				final var os = getOs(d.getName());
-				getRegionsUnion(d.getImages()).stream().map(regionIds::get).filter(Objects::nonNull)
-						.forEach(r -> options.getSizes().forEach(s -> {
-							// Install monthly based price
-							installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
+				getRegionsUnion(d.getImages()).stream().map(regionIds::get).filter(Objects::nonNull).forEach(r -> options.getSizes().forEach(s -> {
+					// Install monthly based price
+					installInstancePrice(context, monthlyTerm, os, s.getType(), s.getPricePerMonth(), r);
 
-							// Install hourly based price
-							installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(),
-									s.getPricePerHour() * context.getHoursMonth(), r);
-						}));
+					// Install hourly based price
+					installInstancePrice(context, hourlyTerm, getOs(d.getName()), s.getType(), s.getPricePerHour() * context.getHoursMonth(), r);
+				}));
 			});
 		}
 
 		// Database
 		nextStep(context, "install-database");
-		context.setPreviousDatabase(dpRepository.findAllBy("term.node", node).stream()
-				.collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
+		context.setPreviousDatabase(
+				dpRepository.findAllBy("term.node", node).stream().collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
 		try (var curl = new CurlProcessor()) {
 			final var mapper = new ObjectMapper();
 
 			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-			final var rawJS = StringUtils.defaultString(curl.get(getPricesApi() + "/aurora.js"), "");
+			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
 			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
 			// Engine
 			if (!engineMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
-			final var dbaasDbs = mapper
-					.readValue(
-							StringUtils.replace(StringUtils
-									.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false")
-									.replaceAll("![^,}]+", "\"\""), "!", ""),
-							new TypeReference<List<NamedBean<Integer>>>() {
-							});
+			final var dbaasDbs = mapper.readValue(StringUtils.replace(
+					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
+					new TypeReference<List<NamedBean<Integer>>>() {
+					});
 			// Instance price
 			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
 			}
-			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""),
-					new TypeReference<List<DatabasePrice>>() {
-					});
+			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""), new TypeReference<List<DatabasePrice>>() {
+			});
 
 			// For each price/region/engine
 			// Install term, type and price
-			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
-					.forEach(engine -> dbaasSizes.stream().forEach(s -> {
-						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
-						if (isEnabledDatabaseType(context, codeType)) {
-							var type = installDatabaseType(context, codeType, s);
-							context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
-									.forEach(region -> {
-										// Install monthly based price
-										var partialCode = codeType + "/" + engine;
-										installDatabasePrice(context, monthlyTerm,
-												monthlyTerm.getCode() + "/" + partialCode, type,
-												s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
+			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e)).forEach(engine -> dbaasSizes.stream().forEach(s -> {
+				final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
+				if (isEnabledDatabaseType(context, codeType)) {
+					var type = installDatabaseType(context, codeType, s);
+					context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r)).forEach(region -> {
+						// Install monthly based price
+						var partialCode = codeType + "/" + engine;
+						installDatabasePrice(context, monthlyTerm, monthlyTerm.getCode() + "/" + partialCode, type, s.getMonthlyPrice() * PRICE_MULTIPLIER,
+								engine, null, false, region);
 
-										// Install hourly based price
-										installDatabasePrice(context, hourlyTerm,
-												hourlyTerm.getCode() + "-" + partialCode, type,
-												s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(),
-												engine, null, false, region);
-									});
-						}
-					}));
+						// Install hourly based price
+						installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode, type,
+								s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(), engine, null, false, region);
+					});
+				}
+			}));
 		}
 
 		// Install storage
@@ -258,10 +235,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		// Support
 		// Install type and price
 		nextStep(context, "install-support");
-		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv")
-				.forEach(t -> installSupportType(context, t.getCode(), t));
-		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv")
-				.forEach(t -> installSupportPrice(context, t.getCode(), t));
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> installSupportType(context, t.getCode(), t));
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> installSupportPrice(context, t.getCode(), t));
 	}
 
 	/**
@@ -350,8 +325,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install or update a storage type.
 	 */
-	private ProvStorageType installStorageType(final UpdateContext context, final String code,
-			final Consumer<ProvStorageType> aType) {
+	private ProvStorageType installStorageType(final UpdateContext context, final String code, final Consumer<ProvStorageType> aType) {
 		final var type = context.getStorageTypes().computeIfAbsent(code, c -> {
 			final var newType = new ProvStorageType();
 			newType.setNode(context.getNode());
@@ -371,8 +345,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install or update a storage price.
 	 */
-	private void installStoragePrice(final UpdateContext context, final String region, final ProvStorageType type,
-			final double cost, final String code) {
+	private void installStoragePrice(final UpdateContext context, final String region, final ProvStorageType type, final double cost, final String code) {
 		final var price = context.getPreviousStorage().computeIfAbsent(code, c -> {
 			final var newPrice = new ProvStoragePrice();
 			newPrice.setType(type);
@@ -392,10 +365,9 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new instance price as needed.
 	 */
-	private void installInstancePrice(final UpdateContext context, final ProvInstancePriceTerm term, final VmOs os,
-			final ProvInstanceType type, final double monthlyCost, final ProvLocation region) {
-		final var price = context.getPrevious().computeIfAbsent(
-				region.getName() + "/" + term.getCode() + "/" + os.name().toLowerCase() + "/" + type.getCode(),
+	private void installInstancePrice(final UpdateContext context, final ProvInstancePriceTerm term, final VmOs os, final ProvInstanceType type,
+			final double monthlyCost, final ProvLocation region) {
+		final var price = context.getPrevious().computeIfAbsent(region.getName() + "/" + term.getCode() + "/" + os.name().toLowerCase() + "/" + type.getCode(),
 				code -> {
 					// New instance price (not update mode)
 					final var newPrice = new ProvInstancePrice();
@@ -477,8 +449,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new database type as needed.
 	 */
-	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code,
-			final DatabasePrice aType) {
+	private ProvDatabaseType installDatabaseType(final UpdateContext context, final String code, final DatabasePrice aType) {
 		final var type = context.getDatabaseTypes().computeIfAbsent(code, c -> {
 			final var newType = new ProvDatabaseType();
 			newType.setNode(context.getNode());
@@ -504,9 +475,8 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	/**
 	 * Install a new instance price as needed.
 	 */
-	private void installDatabasePrice(final UpdateContext context, final ProvInstancePriceTerm term,
-			final String localCode, final ProvDatabaseType type, final double monthlyCost, final String engine,
-			final String storageEngine, final boolean byol, final String region) {
+	private void installDatabasePrice(final UpdateContext context, final ProvInstancePriceTerm term, final String localCode, final ProvDatabaseType type,
+			final double monthlyCost, final String engine, final String storageEngine, final boolean byol, final String region) {
 		final var price = context.getPreviousDatabase().computeIfAbsent(region + "/" + localCode, c -> {
 			// New instance price
 			final var newPrice = new ProvDatabasePrice();
@@ -545,12 +515,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Update the cost
-		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR),
-				sp2Repository::save);
+		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
 	}
 
-	private ProvSupportType installSupportType(final UpdateContext context, final String code,
-			final ProvSupportType aType) {
+	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();
 			newType.setName(c);
