@@ -499,37 +499,6 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	}
 
 	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
-			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
-			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
-			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
-					new TypeReference<List<NamedBean<Integer>>>() {
-					});
-			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
-			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""), new TypeReference<List<DatabasePrice>>() {
-			});
-			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
-					.forEach(engine -> dbaasSizes.forEach(s -> {
-						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
-						if (isEnabledDatabaseType(context, codeType)) {
-							var type = installDatabaseType(context, codeType, s);
-							context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
-									.forEach(region -> {
-										// Install monthly based price
-										var partialCode = codeType + "/" + engine;
-										installDatabasePrice(context, monthlyTerm,
-												monthlyTerm.getCode() + "/" + partialCode, type,
-												s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
-						// Install hourly based price
-						installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode, type,
-								s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(), engine, null, false, region);
-					});
-				}
-			}));
-		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> installSupportType(context, t.getCode(), t));
-		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> installSupportPrice(context, t.getCode(), t));
-		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
-	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();
 			newType.setName(c);
