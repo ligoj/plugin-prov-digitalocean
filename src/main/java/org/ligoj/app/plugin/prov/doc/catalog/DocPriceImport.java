@@ -3,39 +3,17 @@
  */
 package org.ligoj.app.plugin.prov.doc.catalog;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
 import org.ligoj.app.plugin.prov.doc.ProvDocPluginResource;
-import org.ligoj.app.plugin.prov.model.ImportCatalogStatus;
-import org.ligoj.app.plugin.prov.model.ProvDatabasePrice;
-import org.ligoj.app.plugin.prov.model.ProvDatabaseType;
-import org.ligoj.app.plugin.prov.model.ProvInstancePrice;
-import org.ligoj.app.plugin.prov.model.ProvInstancePriceTerm;
-import org.ligoj.app.plugin.prov.model.ProvInstanceType;
-import org.ligoj.app.plugin.prov.model.ProvLocation;
-import org.ligoj.app.plugin.prov.model.ProvStorageOptimized;
-import org.ligoj.app.plugin.prov.model.ProvStoragePrice;
-import org.ligoj.app.plugin.prov.model.ProvStorageType;
-import org.ligoj.app.plugin.prov.model.ProvSupportPrice;
-import org.ligoj.app.plugin.prov.model.ProvSupportType;
-import org.ligoj.app.plugin.prov.model.ProvTenancy;
-import org.ligoj.app.plugin.prov.model.Rate;
-import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.app.plugin.prov.model.*;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
@@ -43,11 +21,13 @@ import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.Setter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The provisioning price service for Digital Ocean. Manage install or update of prices.<br>
@@ -197,7 +177,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
 			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
+							StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
 					new TypeReference<List<NamedBean<Integer>>>() {
 					});
 			// Instance price
@@ -409,9 +389,9 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 			// See https://www.digitalocean.com/docs/droplets/resources/choose-plan/
 			switch (aType.getCategorie().getName()) {
-			case "General Purpose" -> t.setProcessor("Intel Xeon Skylake");
-			case "CPU Intensive" -> t.setProcessor("Intel Xeon"); // Intel Skylake or Broadwell
-			default -> t.setProcessor(null);
+				case "General Purpose" -> t.setProcessor("Intel Xeon Skylake");
+				case "CPU Intensive" -> t.setProcessor("Intel Xeon"); // Intel Skylake or Broadwell
+				default -> t.setProcessor(null);
 			}
 
 			// Rating
@@ -518,6 +498,37 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
 	}
 
+	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
+			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
+			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			final var dbaasDbs = mapper.readValue(StringUtils.replace(
+					StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
+					new TypeReference<List<NamedBean<Integer>>>() {
+					});
+			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
+			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""), new TypeReference<List<DatabasePrice>>() {
+			});
+			dbaasDbs.stream().map(NamedBean::getName).filter(e -> isEnabledEngine(context, e))
+					.forEach(engine -> dbaasSizes.forEach(s -> {
+						final var codeType = String.format("db-%d-%d", s.getCpu(), s.getMemory());
+						if (isEnabledDatabaseType(context, codeType)) {
+							var type = installDatabaseType(context, codeType, s);
+							context.getRegions().keySet().stream().filter(r -> isEnabledRegionDatabase(context, r))
+									.forEach(region -> {
+										// Install monthly based price
+										var partialCode = codeType + "/" + engine;
+										installDatabasePrice(context, monthlyTerm,
+												monthlyTerm.getCode() + "/" + partialCode, type,
+												s.getMonthlyPrice() * PRICE_MULTIPLIER, engine, null, false, region);
+						// Install hourly based price
+						installDatabasePrice(context, hourlyTerm, hourlyTerm.getCode() + "-" + partialCode, type,
+								s.getMonthlyPrice() * PRICE_MULTIPLIER / 672d * context.getHoursMonth(), engine, null, false, region);
+					});
+				}
+			}));
+		csvForBean.toBean(ProvSupportType.class, PREFIX + "/prov-support-type.csv").forEach(t -> installSupportType(context, t.getCode(), t));
+		csvForBean.toBean(ProvSupportPrice.class, PREFIX + "/prov-support-price.csv").forEach(t -> installSupportPrice(context, t.getCode(), t));
+		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
 	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
 		final var type = context.getSupportTypes().computeIfAbsent(code, c -> {
 			var newType = new ProvSupportType();

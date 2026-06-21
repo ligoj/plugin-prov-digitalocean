@@ -15,31 +15,31 @@
 	<name>Ligoj - Plugin Provisioning - Digital Ocean</name>
 	<url>https://github.com/ligoj/plugin-prov-digitalocean</url>
 
-	<scm>
-		<connection>scm:git:https://github.com/ligoj/plugin-prov-digitalocean</connection>
-		<developerConnection>scm:git:https://github.com/ligoj/plugin-prov-digitalocean</developerConnection>
-		<url>https://github.com/ligoj/plugin-prov-digitalocean.git</url>
-	</scm>
+    <scm>
+        <connection>scm:git:https://github.com/ligoj/plugin-prov-digitalocean</connection>
+        <developerConnection>scm:git:https://github.com/ligoj/plugin-prov-digitalocean</developerConnection>
+        <url>https://github.com/ligoj/plugin-prov-digitalocean.git</url>
+    </scm>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.ligoj.plugin</groupId>
-			<artifactId>plugin-prov</artifactId>
-			<version>[3.2.0,3.3.0)</version>
-			<scope>provided</scope>
-		</dependency>
-	</dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>org.ligoj.plugin</groupId>
+            <artifactId>plugin-prov</artifactId>
+            <version>[3.2.2,3.3.0)</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
-	<profiles>
-		<profile>
-			<id>github</id>
-			<distributionManagement>
-				<repository>
-					<id>github-ligoj</id>
-					<name>GitHub Packages</name>
-					<url>https://maven.pkg.github.com/ligoj/plugin-prov-digitalocean</url>
-				</repository>
-			</distributionManagement>
-		</profile>
-	</profiles>
+    <profiles>
+        <profile>
+            <id>github</id>
+            <distributionManagement>
+                <repository>
+                    <id>github-ligoj</id>
+                    <name>GitHub Packages</name>
+                    <url>https://maven.pkg.github.com/ligoj/plugin-prov-digitalocean</url>
+                </repository>
+            </distributionManagement>
+        </profile>
+    </profiles>
 </project>

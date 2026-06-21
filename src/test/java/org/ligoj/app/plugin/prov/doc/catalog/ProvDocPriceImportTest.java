@@ -105,7 +105,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 	void prepareData() throws IOException {
 		persistSystemEntities();
 		persistEntities("csv",
-				new Class[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
+				new Class<?>[] { Node.class, Project.class, CacheCompany.class, CacheUser.class, DelegateNode.class,
 						Parameter.class, ProvLocation.class, Subscription.class, ParameterValue.class,
 						ProvQuote.class },
 				StandardCharsets.UTF_8);
@@ -273,6 +273,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		checkImportStatus();
 
 		// Check physical CPU
+
 		// CPU Intensive
 		lookup = qiResource.lookup(instance.getConfiguration().getSubscription().getId(),
 				builder().cpu(2).ram(4096).build());
@@ -307,7 +308,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		Assertions.assertEquals(16.0d, newQuote.getCost().getMin(), DELTA);
 
 		// Compute price is updated
-		final var instance2 = newQuote.getInstances().get(0);
+		final var instance2 = newQuote.getInstances().getFirst();
 		Assertions.assertEquals(6.0d, instance2.getCost(), DELTA);
 
 		// Check status
@@ -319,7 +320,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 				.size());
 
 		final var lookupSu = qs2Resource
-				.lookup(subscription, 0, null, SupportType.ALL, SupportType.ALL, SupportType.ALL, Rate.BEST).get(0);
+				.lookup(subscription, 0, null, SupportType.ALL, SupportType.ALL, SupportType.ALL, Rate.BEST).getFirst();
 		Assertions.assertEquals("Premier", lookupSu.getPrice().getType().getName());
 		Assertions.assertEquals(5000.0d, lookupSu.getCost(), DELTA);
 
@@ -368,8 +369,8 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 			final double instanceCost) {
 		Assertions.assertEquals(minCost, quote.getCost().getMin(), DELTA);
 		Assertions.assertEquals(maxCost, quote.getCost().getMax(), DELTA);
-		checkStorage(quote.getStorages().get(0));
-		return checkInstance(quote.getInstances().get(0), instanceCost);
+		checkStorage(quote.getStorages().getFirst());
+		return checkInstance(quote.getInstances().getFirst(), instanceCost);
 	}
 
 	private ProvQuoteInstance checkInstance(final ProvQuoteInstance instance, final double cost) {
@@ -493,7 +494,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		// Lookup STANDARD SSD storage within the same region as the attached server
 		// ---------------------------------
 		var sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW)
-				.location("sfo2").instance(createInstance.getId()).build()).get(0);
+				.location("sfo2").instance(createInstance.getId()).build()).getFirst();
 		Assertions.assertEquals(0.5, sLookup.getCost(), DELTA);
 		var price = sLookup.getPrice();
 		Assertions.assertEquals("sfo2/do-block-storage-standard", price.getCode());
@@ -516,7 +517,7 @@ class ProvDocPriceImportTest extends AbstractServerTest {
 		// Lookup snapshot
 		// ---------------------------------
 		sLookup = qsResource.lookup(subscription, QuoteStorageQuery.builder().size(5).latency(Rate.LOW).location("sfo1")
-				.optimized(ProvStorageOptimized.DURABILITY).build()).get(0);
+				.optimized(ProvStorageOptimized.DURABILITY).build()).getFirst();
 		Assertions.assertEquals(0.25, sLookup.getCost(), DELTA);
 		price = sLookup.getPrice();
 		Assertions.assertEquals("sfo1/do-snapshot", price.getCode());
