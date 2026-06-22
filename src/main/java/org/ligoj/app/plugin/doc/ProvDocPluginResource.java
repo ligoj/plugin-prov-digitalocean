@@ -1,7 +1,7 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.doc;
+package org.ligoj.app.plugin.doc;
 
 import java.io.IOException;
 import java.util.Map;
@@ -13,7 +13,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
-import org.ligoj.app.plugin.prov.doc.catalog.DocPriceImport;
+import org.ligoj.app.plugin.doc.catalog.DocPriceImport;
 import org.ligoj.app.plugin.prov.model.VmOs;
 import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;

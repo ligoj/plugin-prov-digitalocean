@@ -1,7 +1,7 @@
 /*
  * Licensed under MIT (https://github.com/ligoj/ligoj/blob/master/LICENSE)
  */
-package org.ligoj.app.plugin.prov.doc.catalog;
+package org.ligoj.app.plugin.doc.catalog;
 
 import org.ligoj.app.plugin.prov.model.ProvInstanceType;
 import org.ligoj.bootstrap.core.NamedBean;
