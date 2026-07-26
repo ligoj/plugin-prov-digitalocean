@@ -9,10 +9,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Setter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.ligoj.app.plugin.doc.ProvDocPluginResource;
 import org.ligoj.app.plugin.prov.catalog.AbstractImportCatalogResource;
 import org.ligoj.app.plugin.prov.catalog.AbstractUpdateContext;
-import org.ligoj.app.plugin.doc.ProvDocPluginResource;
 import org.ligoj.app.plugin.prov.model.*;
 import org.ligoj.bootstrap.core.INamableBean;
 import org.ligoj.bootstrap.core.NamedBean;
@@ -122,11 +122,11 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 				.collect(Collectors.toMap(INamableBean::getName, Function.identity())));
 		context.setRegionsDatabase(
 				objectMapper.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-database.json").getInputStream(), StandardCharsets.UTF_8),
-						new TypeReference<List<String>>() {
+						new TypeReference<>() {
 						}));
 		context.setRegionsVolume(
 				objectMapper.readValue(IOUtils.toString(new ClassPathResource("digitalocean/regions-volume.json").getInputStream(), StandardCharsets.UTF_8),
-						new TypeReference<List<String>>() {
+						new TypeReference<>() {
 						}));
 
 		// Fetch the remote prices stream and build the prices object
@@ -170,23 +170,23 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
 			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
-			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
 			// Engine
 			if (!engineMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, engines not found");
 			}
-			final var dbaasDbs = mapper.readValue(StringUtils.replace(
-							StringUtils.replace(StringUtils.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
+			final var dbaasDbs = mapper.readValue(Strings.CS.replace(
+							Strings.CS.replace(Strings.CS.replace(engineMatcher.group(1), "!0", "true"), "!1", "false").replaceAll("![^,}]+", "\"\""), "!", ""),
 					new TypeReference<List<NamedBean<Integer>>>() {
 					});
 			// Instance price
-			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*\\])", Pattern.MULTILINE).matcher(rawJS);
+			final var iMatcher = Pattern.compile("e.DBAAS_SIZES=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
 			if (!iMatcher.find()) {
 				// Prices format has changed too much, unable to parse data
 				throw new BusinessException("DigitalOcean prices API cannot be parsed, sizes not found");
 			}
-			final var dbaasSizes = mapper.readValue(StringUtils.replace(iMatcher.group(1), "*l", ""), new TypeReference<List<DatabasePrice>>() {
+			final var dbaasSizes = mapper.readValue(Strings.CS.replace(iMatcher.group(1), "*l", ""), new TypeReference<List<DatabasePrice>>() {
 			});
 
 			// For each price/region/engine
@@ -333,10 +333,10 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			return newPrice;
 		});
 
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(installRegion(context, region));
-			p.setType(type);
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLocation(installRegion(context, region));
+			price.setType(type);
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, cost, spRepository);
@@ -354,14 +354,14 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 					newPrice.setCode(code);
 					return newPrice;
 				});
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(region);
-			p.setOs(os);
-			p.setTerm(term);
-			p.setTenancy(ProvTenancy.SHARED);
-			p.setType(type);
-			p.setPeriod(term.getPeriod());
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLocation(region);
+			price.setOs(os);
+			price.setTerm(term);
+			price.setTenancy(ProvTenancy.SHARED);
+			price.setType(type);
+			price.setPeriod(term.getPeriod());
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, monthlyCost, ipRepository);
@@ -464,15 +464,15 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 			return newPrice;
 		});
 
-		copyAsNeeded(context, price, p -> {
-			p.setLocation(installRegion(context, region));
-			p.setEngine(engine.toUpperCase(Locale.ENGLISH));
-			p.setStorageEngine(storageEngine);
-			p.setLicense(null /* ProvInstancePrice.LICENSE_BYOL */);
-			p.setTerm(term);
-			p.setType(type);
-			p.setPeriod(term.getPeriod());
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLocation(installRegion(context, region));
+			price.setEngine(engine.toUpperCase(Locale.ENGLISH));
+			price.setStorageEngine(storageEngine);
+			price.setLicense(null /* ProvInstancePrice.LICENSE_BYOL */);
+			price.setTerm(term);
+			price.setType(type);
+			price.setPeriod(term.getPeriod());
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, round3Decimals(monthlyCost), dpRepository);
@@ -487,12 +487,12 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		// Merge the support type details
-		copyAsNeeded(context, price, p -> {
-			p.setLimit(aPrice.getLimit());
-			p.setMin(aPrice.getMin());
-			p.setRate(aPrice.getRate());
-			p.setType(aPrice.getType());
-		});
+		if (isNeedUpdate(context, price)) {
+			price.setLimit(aPrice.getLimit());
+			price.setMin(aPrice.getMin());
+			price.setRate(aPrice.getRate());
+			price.setType(aPrice.getType());
+		}
 
 		// Update the cost
 		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
