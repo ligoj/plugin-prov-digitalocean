@@ -24,7 +24,6 @@ import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.annotation.Rollback;
@@ -35,6 +34,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Test class of {@link ProvDocPluginResource}
@@ -84,7 +84,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 	@Test
 	void install() throws IOException {
 		final var resource2 = new ProvDocPluginResource();
-		resource2.priceImport = Mockito.mock(DocPriceImport.class);
+		resource2.priceImport = mock(DocPriceImport.class);
 		resource2.install();
 	}
 
@@ -93,7 +93,7 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 		// Re-Install a new configuration
 		final var resource2 = new ProvDocPluginResource();
 		super.applicationContext.getAutowireCapableBeanFactory().autowireBean(resource2);
-		resource2.priceImport = Mockito.mock(DocPriceImport.class);
+		resource2.priceImport = mock(DocPriceImport.class);
 		resource2.updateCatalog("service:prov:digitalocean:test", false);
 	}
 
