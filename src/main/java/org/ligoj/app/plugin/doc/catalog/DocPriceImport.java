@@ -3,9 +3,6 @@
  */
 package org.ligoj.app.plugin.doc.catalog;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Setter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
@@ -20,6 +17,9 @@ import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.json.JsonReadFeature;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -166,9 +166,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		context.setPreviousDatabase(
 				dpRepository.findAllBy("term.node", node).stream().collect(Collectors.toMap(ProvDatabasePrice::getCode, Function.identity())));
 		try (var curl = new CurlProcessor()) {
-			final var mapper = new ObjectMapper();
-
-			mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+			final var mapper = new JsonMapper(JsonMapper.builderWithJackson2Defaults().enable((JsonReadFeature.ALLOW_UNQUOTED_PROPERTY_NAMES)));
 			final var rawJS = Objects.toString(curl.get(getPricesApi() + "/aurora.js"), "");
 			final var engineMatcher = Pattern.compile("e.DBAAS_DBS=(\\[[^=]*])", Pattern.MULTILINE).matcher(rawJS);
 			// Engine
@@ -495,7 +493,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		}
 
 		// Update the cost
-		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, c) -> price.setCost(cR), sp2Repository::save);
+		saveAsNeeded(context, price, price.getCost(), aPrice.getCost(), (cR, _) -> price.setCost(cR), sp2Repository::save);
 	}
 
 	private ProvSupportType installSupportType(final UpdateContext context, final String code, final ProvSupportType aType) {
@@ -539,7 +537,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 	 * @return The previous or the new installed region.
 	 */
 	private ProvLocation installRegion(final UpdateContext context, final String region, final String name) {
-		final var entity = context.getRegions().computeIfAbsent(region, r -> {
+		final var entity = context.getRegions().computeIfAbsent(region, _ -> {
 			final var newRegion = new ProvLocation();
 			newRegion.setNode(context.getNode());
 			newRegion.setName(region);
