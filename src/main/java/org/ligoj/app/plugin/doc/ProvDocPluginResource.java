@@ -10,11 +10,16 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import lombok.extern.slf4j.Slf4j;
+
+import org.ligoj.app.dao.ParameterRepository;
+import org.ligoj.app.dao.ParameterValueRepository;
 import org.ligoj.app.plugin.prov.AbstractProvResource;
 import org.ligoj.app.plugin.prov.ProvResource;
 import org.ligoj.app.plugin.prov.catalog.ImportCatalogService;
 import org.ligoj.app.plugin.doc.catalog.DocPriceImport;
 import org.ligoj.app.plugin.prov.model.VmOs;
+import org.ligoj.bootstrap.core.crypto.CryptoHelper;
 import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.ligoj.bootstrap.resource.system.configuration.ConfigurationResource;
@@ -24,6 +29,7 @@ import org.springframework.stereotype.Service;
 /**
  * The provisioning service for Digital Ocean. There is complete quote configuration along the subscription.
  */
+@Slf4j
 @Service
 @Path(ProvDocPluginResource.SERVICE_URL)
 @Produces(MediaType.APPLICATION_JSON)
@@ -64,6 +70,15 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 
 	@Autowired
 	protected ConfigurationResource configuration;
+
+	@Autowired
+	protected ParameterRepository parameterRepository;
+
+	@Autowired
+	protected ParameterValueRepository parameterValueRepository;
+
+	@Autowired
+	protected CryptoHelper cryptoHelper;
 
 	@Override
 	public String getKey() {
@@ -121,6 +136,20 @@ public class ProvDocPluginResource extends AbstractProvResource implements Impor
 	@Override
 	public void install() throws IOException {
 		priceImport.install(false);
+	}
+
+	/**
+	 * The seed CSV only inserts the missing rows, so secure there the token stored in clear by the previous versions,
+	 * and encrypt its stored values. A value already encrypted is kept.
+	 */
+	@Override
+	public void update(final String oldVersion) {
+		parameterRepository.findById(PARAMETER_TOKEN).filter(p -> !p.isSecured()).ifPresent(p -> {
+			log.info("Parameter {} is now secured, its stored values are encrypted", PARAMETER_TOKEN);
+			p.setSecured(true);
+		});
+		parameterValueRepository.findAllBy("parameter.id", PARAMETER_TOKEN)
+				.forEach(v -> v.setData(cryptoHelper.encryptAsNeeded(v.getData())));
 	}
 
 	@Override

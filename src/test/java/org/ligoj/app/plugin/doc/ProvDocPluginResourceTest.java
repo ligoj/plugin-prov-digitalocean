@@ -12,14 +12,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.ligoj.app.AbstractServerTest;
+import org.ligoj.app.dao.ParameterRepository;
+import org.ligoj.app.dao.ParameterValueRepository;
 import org.ligoj.app.iam.model.CacheCompany;
 import org.ligoj.app.iam.model.CacheUser;
 import org.ligoj.app.model.*;
 import org.ligoj.app.plugin.doc.catalog.DocPriceImport;
 import org.ligoj.app.plugin.prov.model.ProvLocation;
 import org.ligoj.app.plugin.prov.model.ProvQuote;
+import org.ligoj.app.resource.node.ParameterValueResource;
 import org.ligoj.app.resource.subscription.SubscriptionResource;
 import org.ligoj.bootstrap.MatcherUtil;
+import org.ligoj.bootstrap.core.crypto.CryptoHelper;
 import org.ligoj.bootstrap.core.curl.CurlRequest;
 import org.ligoj.bootstrap.core.resource.BusinessException;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
@@ -56,6 +60,18 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 	@Autowired
 	private ConfigurationResource configuration;
 
+	@Autowired
+	private ParameterRepository parameterRepository;
+
+	@Autowired
+	private ParameterValueRepository parameterValueRepository;
+
+	@Autowired
+	private ParameterValueResource parameterValueResource;
+
+	@Autowired
+	private CryptoHelper cryptoHelper;
+
 	@BeforeEach
 	void prepareData() throws IOException {
 		persistSystemEntities();
@@ -86,6 +102,44 @@ class ProvDocPluginResourceTest extends AbstractServerTest {
 		final var resource2 = new ProvDocPluginResource();
 		resource2.priceImport = mock(DocPriceImport.class);
 		resource2.install();
+	}
+
+	@Test
+	void tokenIsSecured() {
+		// Encrypted at rest, never sent with the subscription data
+		Assertions.assertTrue(parameterRepository.findOneExpected(ProvDocPluginResource.PARAMETER_TOKEN).isSecured());
+		Assertions.assertFalse(parameterValueResource.getNonSecuredSubscriptionParameters(subscription)
+				.containsKey(ProvDocPluginResource.PARAMETER_TOKEN));
+	}
+
+	@Test
+	void updateSecuresTheToken() {
+		// A database installed by a previous version: the token is not secured, its value is stored in clear
+		parameterRepository.findOneExpected(ProvDocPluginResource.PARAMETER_TOKEN).setSecured(false);
+		em.flush();
+		em.clear();
+
+		resource.update("1.0.0");
+		em.flush();
+		em.clear();
+		Assertions.assertTrue(parameterRepository.findOneExpected(ProvDocPluginResource.PARAMETER_TOKEN).isSecured());
+		final var data = tokenData();
+		Assertions.assertNotEquals("secret", data);
+		Assertions.assertEquals("secret", cryptoHelper.decrypt(data));
+		cacheManager.getCache("subscription-parameters").clear();
+		Assertions.assertEquals("secret",
+				subscriptionResource.getParametersNoCheck(subscription).get(ProvDocPluginResource.PARAMETER_TOKEN));
+
+		// Run again, as at each restart of a development instance: the encrypted value is kept
+		resource.update("1.0.0");
+		em.flush();
+		em.clear();
+		Assertions.assertEquals(data, tokenData());
+	}
+
+	private String tokenData() {
+		return parameterValueRepository.findAllBy("parameter.id", ProvDocPluginResource.PARAMETER_TOKEN).getFirst()
+				.getData();
 	}
 
 	@Test
