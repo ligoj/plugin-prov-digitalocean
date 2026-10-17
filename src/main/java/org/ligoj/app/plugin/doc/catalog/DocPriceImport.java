@@ -312,7 +312,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 		});
 
 		return copyAsNeeded(context, type, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(code /* human-readable name */);
 			t.setMinimal(1);
 			t.setIncrement(null);
 			t.setAvailability(99d);
@@ -413,7 +413,7 @@ public class DocPriceImport extends AbstractImportCatalogResource {
 
 		// Complete the specifications
 		return copyAsNeeded(context, term, t -> {
-			t.setName(code /* human readable name */);
+			t.setName(code /* human-readable name */);
 			t.setPeriod(period);
 			t.setReservation(false);
 			t.setConvertibleFamily(false);
